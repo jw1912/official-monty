@@ -60,7 +60,7 @@ impl Edge {
     pub fn var_with_prior(&self, parent: &Self) -> f32 {
         let v = self.visits as f32;
 
-        let pq = parent.q();
+        let pq = 1.0 - parent.q();
         let sq_wins = self.sq_wins + pq.powi(2);
         let wins = self.wins + pq;
 
