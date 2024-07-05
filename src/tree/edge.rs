@@ -57,9 +57,14 @@ impl Edge {
         self.wins / self.visits as f32
     }
 
-    pub fn var(&self) -> f32 {
+    pub fn var_with_prior(&self, parent: &Self) -> f32 {
         let v = self.visits as f32;
-        let var = self.sq_wins / v - (self.wins / v).powi(2);
+
+        let pq = parent.q();
+        let sq_wins = self.sq_wins + pq.powi(2);
+        let wins = self.wins + pq;
+
+        let var = sq_wins / v - (wins / v).powi(2);
         var.max(0.0)
     }
 
