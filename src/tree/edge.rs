@@ -59,7 +59,7 @@ impl Edge {
 
     pub fn var(&self) -> f32 {
         let v = self.visits as f32;
-        let var = self.sq_wins / v - (self.wins / v).powi(2);
+        let var = self.sq_wins / (v - 1.0) - (self.wins / v).powi(2);
         var.max(0.0)
     }
 
