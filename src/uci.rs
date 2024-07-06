@@ -76,12 +76,13 @@ impl Uci {
                 }
                 "policy" => {
                     let f = pos.get_policy_feats();
+                    let t = pos.board().threats();
                     let mut max = f32::NEG_INFINITY;
                     let mut moves = Vec::new();
 
                     pos.map_legal_moves(|mov| {
                         let s = pos.conv_mov_to_str(mov);
-                        let p = pos.get_policy(mov, &f, policy);
+                        let p = pos.get_policy(mov, &f, t, policy);
 
                         if p > max {
                             max = p;

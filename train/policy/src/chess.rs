@@ -1,8 +1,8 @@
 use datagen::{PolicyData, Rand};
 use goober::{FeedForwardNetwork, OutputLayer, SparseVector, Vector};
-use monty::{Board, Move, PolicyNetwork, SubNet};
+use monty::{Board, Move};
 
-use crate::TrainablePolicy;
+use crate::{TrainablePolicy, arch::{PolicyNetwork, SubNet}};
 
 impl TrainablePolicy for PolicyNetwork {
     type Data = PolicyData;

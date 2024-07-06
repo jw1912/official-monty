@@ -4,7 +4,7 @@ mod consts;
 mod frc;
 mod moves;
 
-use crate::{PolicyNetwork, ValueNetwork};
+use crate::{PolicyNetwork, ValueNetwork, PolicyFeats};
 
 pub use self::{board::Board, frc::Castling, moves::Move};
 
@@ -114,19 +114,28 @@ impl ChessState {
         self.stm()
     }
 
-    pub fn get_policy_feats(&self) -> (goober::SparseVector, u64) {
-        let mut feats = goober::SparseVector::with_capacity(32);
-        self.board.map_policy_features(|feat| feats.push(feat));
-        (feats, self.board.threats())
+    pub fn get_policy_feats(&self) -> PolicyFeats {
+        let mut feats = PolicyFeats {
+            list: [0; 32],
+            len: 0,
+        };
+
+        self.board.map_policy_features(|feat| {
+            feats.list[feats.len] = feat as u16;
+            feats.len += 1;
+        });
+
+        feats
     }
 
     pub fn get_policy(
         &self,
         mov: Move,
-        (feats, threats): &(goober::SparseVector, u64),
+        feats: &PolicyFeats,
+        threats: u64,
         policy: &PolicyNetwork,
     ) -> f32 {
-        policy.get(&self.board, &mov, feats, *threats)
+        policy.get(&self.board, &mov, feats, threats)
     }
 
     pub fn get_value(&self, value: &ValueNetwork) -> i32 {
@@ -143,10 +152,11 @@ impl ChessState {
 
     pub fn display(&self, policy: &PolicyNetwork) {
         let feats = self.get_policy_feats();
+        let threats = self.board.threats();
         let mut moves = Vec::new();
         let mut max = f32::NEG_INFINITY;
         self.map_legal_moves(|mov| {
-            let policy = self.get_policy(mov, &feats, policy);
+            let policy = self.get_policy(mov, &feats, threats, policy);
             moves.push((mov, policy));
 
             if policy > max {

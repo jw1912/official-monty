@@ -104,10 +104,11 @@ impl Node {
         assert!(self.is_not_expanded());
 
         let feats = pos.get_policy_feats();
+        let threats = pos.board().threats();
         let mut max = f32::NEG_INFINITY;
 
         pos.map_legal_moves(|mov| {
-            let policy = pos.get_policy(mov, &feats, policy);
+            let policy = pos.get_policy(mov, &feats, threats, policy);
 
             // trick for calculating policy before quantising
             self.actions
@@ -145,13 +146,14 @@ impl Node {
         policy: &PolicyNetwork,
     ) {
         let feats = pos.get_policy_feats();
+        let threats = pos.board().threats();
         let mut max = f32::NEG_INFINITY;
 
         let mut policies = Vec::new();
 
         for action in &self.actions {
             let mov = Move::from(action.mov());
-            let policy = pos.get_policy(mov, &feats, policy);
+            let policy = pos.get_policy(mov, &feats, threats, policy);
             policies.push(policy);
             max = max.max(policy);
         }

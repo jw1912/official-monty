@@ -1,4 +1,4 @@
-use monty::PolicyNetwork;
+use policy::arch::PolicyNetwork;
 
 fn main() {
     let mut args = std::env::args();

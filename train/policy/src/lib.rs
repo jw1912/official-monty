@@ -1,3 +1,4 @@
+pub mod arch;
 pub mod chess;
 
 use datagen::to_slice_with_lifetime;

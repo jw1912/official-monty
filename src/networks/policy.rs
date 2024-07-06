@@ -1,37 +1,31 @@
 use crate::chess::{Board, Move};
-
-use goober::{activation, layer, FeedForwardNetwork, Matrix, SparseVector, Vector};
+use super::{Accumulator, Layer, ReLU};
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
 pub const PolicyFileDefaultName: &str = "nn-6b5dc1d7fff9.network";
 
+pub struct PolicyFeats {
+    pub list: [u16; 32],
+    pub len: usize,
+}
+
 #[repr(C)]
-#[derive(Clone, Copy, FeedForwardNetwork)]
+#[derive(Clone, Copy)]
 pub struct SubNet {
-    ft: layer::SparseConnected<activation::ReLU, 768, 16>,
-    l2: layer::DenseConnected<activation::ReLU, 16, 16>,
+    ft: Layer<768, 16>,
+    l2: Layer<16, 16>,
 }
 
 impl SubNet {
-    pub const fn zeroed() -> Self {
-        Self {
-            ft: layer::SparseConnected::zeroed(),
-            l2: layer::DenseConnected::zeroed(),
+    fn out(&self, feats: &PolicyFeats) -> Accumulator<16> {
+        let mut l2 = self.ft.biases;
+
+        for &feat in &feats.list[..feats.len] {
+            l2.add(&self.ft.weights[usize::from(feat)]);
         }
-    }
 
-    pub fn from_fn<F: FnMut() -> f32>(mut f: F) -> Self {
-        let matrix = Matrix::from_fn(|_, _| f());
-        let vector = Vector::from_fn(|_| f());
-
-        let matrix2 = Matrix::from_fn(|_, _| f());
-        let vector2 = Vector::from_fn(|_| f());
-
-        Self {
-            ft: layer::SparseConnected::from_raw(matrix, vector),
-            l2: layer::DenseConnected::from_raw(matrix2, vector2),
-        }
+        self.l2.forward::<ReLU>(&l2)
     }
 }
 
@@ -39,18 +33,11 @@ impl SubNet {
 #[derive(Clone, Copy)]
 pub struct PolicyNetwork {
     pub subnets: [[SubNet; 2]; 448],
-    pub hce: layer::DenseConnected<activation::Identity, 4, 1>,
+    pub hce: [f32; 5],
 }
 
 impl PolicyNetwork {
-    pub const fn zeroed() -> Self {
-        Self {
-            subnets: [[SubNet::zeroed(); 2]; 448],
-            hce: layer::DenseConnected::zeroed(),
-        }
-    }
-
-    pub fn get(&self, pos: &Board, mov: &Move, feats: &SparseVector, threats: u64) -> f32 {
+    pub fn get(&self, pos: &Board, mov: &Move, feats: &PolicyFeats, threats: u64) -> f32 {
         let flip = pos.flip_val();
         let pc = pos.get_pc(1 << mov.src()) - 1;
 
@@ -62,18 +49,12 @@ impl PolicyNetwork {
         let to_subnet = &self.subnets[64 * pc + usize::from(mov.to() ^ flip)][good_see];
         let to_vec = to_subnet.out(feats);
 
-        let hce = self.hce.out(&Self::get_hce_feats(pos, mov))[0];
+        let hce = if mov.is_promo() {
+            self.hce[mov.promo_pc() - 3]
+        } else {
+            0.0
+        };
 
-        from_vec.dot(&to_vec) + hce
-    }
-
-    pub fn get_hce_feats(_: &Board, mov: &Move) -> Vector<4> {
-        let mut feats = Vector::zeroed();
-
-        if mov.is_promo() {
-            feats[mov.promo_pc() - 3] = 1.0;
-        }
-
-        feats
+        from_vec.dot::<ReLU>(&to_vec) + hce
     }
 }
