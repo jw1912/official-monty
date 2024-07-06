@@ -220,8 +220,10 @@ impl<'a> Searcher<'a> {
         let expl = cpuct * expl_scale;
 
         self.tree.get_best_child_by_key(ptr, |action| {
+            let divisor = ((1 + action.visits()) as f32).powf(self.params.expl_tau_div());
+
             let q = SearchHelpers::get_action_value(action, fpu);
-            let u = expl * action.policy() / (1 + action.visits()) as f32;
+            let u = expl * action.policy() / divisor;
 
             q + u
         })
