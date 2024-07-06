@@ -73,6 +73,7 @@ impl<'a> Searcher<'a> {
         let mut nodes = 0;
         let mut depth = 0;
         let mut cumulative_depth = 0;
+        let mut time_adj_frac = 1.0;
 
         // search loop
         loop {
@@ -98,8 +99,24 @@ impl<'a> Searcher<'a> {
                     break;
                 }
 
-                if let Some(time) = limits.max_time {
-                    if timer.elapsed().as_millis() >= time {
+                if let Some(base_time_limit) = limits.max_time {
+                    if nodes % 8192 == 0 {
+                        let ptr = self.tree.root_node();
+                        let parent = self.tree[ptr].parent();
+                        let action = self.tree[ptr].action();
+                        let root_visits = self.tree.edge(parent, action).visits() as f64;
+
+                        let best_action = self.tree.get_best_child(ptr);
+                        let best_child_visits = self.tree.edge(ptr, best_action).visits() as f64;
+
+                        let visits_frac = (best_child_visits / root_visits) * (best_child_visits / 65536.0).tanh();
+
+                        time_adj_frac = 1.0 - visits_frac.powi(2);
+                    }
+
+                    let time_limit = (base_time_limit as f64 * time_adj_frac) as u128;
+
+                    if timer.elapsed().as_millis() >= time_limit {
                         break;
                     }
                 }
