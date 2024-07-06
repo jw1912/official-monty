@@ -4,7 +4,7 @@ mod consts;
 mod frc;
 mod moves;
 
-use crate::{PolicyNetwork, ValueNetwork, PolicyFeats};
+use crate::{PolicyFeats, PolicyNetwork, ValueNetwork};
 
 pub use self::{board::Board, frc::Castling, moves::Move};
 

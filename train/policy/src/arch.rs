@@ -1,5 +1,5 @@
-use monty::{Board, Move};
 use goober::{activation, layer, FeedForwardNetwork, Matrix, SparseVector, Vector};
+use monty::{Board, Move};
 
 #[repr(C)]
 #[derive(Clone, Copy, FeedForwardNetwork)]

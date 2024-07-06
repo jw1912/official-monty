@@ -1,5 +1,5 @@
-use crate::Board;
 use super::{Layer, SCReLU};
+use crate::Board;
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]

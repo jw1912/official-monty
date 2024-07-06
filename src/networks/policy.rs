@@ -1,5 +1,5 @@
-use crate::chess::{Board, Move};
 use super::{Accumulator, Layer, ReLU};
+use crate::chess::{Board, Move};
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
