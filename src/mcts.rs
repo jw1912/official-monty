@@ -214,7 +214,7 @@ impl<'a> Searcher<'a> {
         let is_root = edge.ptr() == self.tree.root_node();
 
         let cpuct = SearchHelpers::get_cpuct(&self.params, edge, is_root);
-        let fpu = SearchHelpers::get_fpu(edge);
+        let fpu = SearchHelpers::get_fpu(&self.params, edge);
         let expl_scale = SearchHelpers::get_explore_scaling(&self.params, edge);
 
         let expl = cpuct * expl_scale;

@@ -28,8 +28,10 @@ impl SearchHelpers {
         (params.expl_tau() * (parent.visits().max(1) as f32).ln()).exp()
     }
 
-    pub fn get_fpu(parent: &Edge) -> f32 {
-        1.0 - parent.q()
+    pub fn get_fpu(params: &MctsParams, parent: &Edge) -> f32 {
+        let q = 1.0 - parent.q();
+        let scale = 256.0 * params.fpu_visits_scale();
+        q * (1.0 + (parent.visits() as f32 / scale).powi(2).min(1.0))
     }
 
     pub fn get_action_value(action: &Edge, fpu: f32) -> f32 {
