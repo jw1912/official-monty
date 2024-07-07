@@ -219,9 +219,13 @@ impl<'a> Searcher<'a> {
 
         let expl = cpuct * expl_scale;
 
+        let boost_q = SearchHelpers::get_boost_q(node);
+
         self.tree.get_best_child_by_key(ptr, |action| {
             let q = SearchHelpers::get_action_value(action, fpu);
-            let u = expl * action.policy() / (1 + action.visits()) as f32;
+
+            let p = SearchHelpers::get_action_policy(&self.params, action, boost_q);
+            let u = expl * p / (1 + action.visits()) as f32;
 
             q + u
         })

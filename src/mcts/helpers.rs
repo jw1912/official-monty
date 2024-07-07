@@ -1,4 +1,4 @@
-use crate::{mcts::MctsParams, tree::Edge};
+use crate::{mcts::MctsParams, tree::{Edge, Node}};
 
 pub struct SearchHelpers;
 
@@ -38,5 +38,33 @@ impl SearchHelpers {
         } else {
             action.q()
         }
+    }
+
+    pub fn get_action_policy(params: &MctsParams, action: &Edge, boost_util: f32) -> f32 {
+        if action.visits() > 0 && action.q() >= boost_util {
+            action.policy().max(params.policy_boost())
+        } else {
+            action.policy()
+        }
+    }
+
+    pub fn get_boost_q(node: &Node) -> f32 {
+        const NUM_TOP: usize = 3;
+
+        let mut top_qs = [0.0; NUM_TOP];
+
+        for action in node.actions() {
+            for i in 0..NUM_TOP {
+                if action.visits() > 0 && action.q() > top_qs[i] {
+                  for j in (i + 1..NUM_TOP).rev() {
+                    top_qs[j] = top_qs[j - 1];
+                  }
+                  top_qs[i] = action.q();
+                  break;
+                }
+            }
+        }
+
+        top_qs[NUM_TOP - 1]
     }
 }
