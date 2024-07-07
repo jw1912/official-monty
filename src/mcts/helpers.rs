@@ -51,7 +51,7 @@ impl SearchHelpers {
     pub fn get_boost_q(node: &Node) -> f32 {
         const NUM_TOP: usize = 3;
 
-        let mut top_qs = [0.0; NUM_TOP];
+        let mut top_qs = [-1.0; NUM_TOP];
 
         for action in node.actions() {
             for i in 0..NUM_TOP {
@@ -65,6 +65,8 @@ impl SearchHelpers {
             }
         }
 
-        top_qs[NUM_TOP - 1]
+        let q = top_qs[NUM_TOP - 1];
+
+        if q < 0.0 { 1.0 } else { q }
     }
 }
