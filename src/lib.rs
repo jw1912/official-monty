@@ -1,4 +1,5 @@
 mod chess;
+mod maths;
 mod mcts;
 mod networks;
 mod tree;

@@ -1,4 +1,4 @@
-use crate::{chess::Move, tree::Edge, ChessState, GameState, MctsParams, PolicyNetwork};
+use crate::{chess::Move, maths, tree::Edge, ChessState, GameState, MctsParams, PolicyNetwork};
 
 #[derive(Clone, Debug)]
 pub struct Node {
@@ -121,9 +121,9 @@ impl Node {
             let mut policy = f32::from_bits(action.ptr() as u32);
 
             policy = if ROOT {
-                ((policy - max) / params.root_pst()).exp()
+                maths::fast_exp((policy - max) / params.root_pst())
             } else {
-                (policy - max).exp()
+                maths::fast_exp(policy - max)
             };
 
             action.set_ptr(f32::to_bits(policy) as i32);
@@ -159,7 +159,7 @@ impl Node {
         let mut total = 0.0;
 
         for policy in &mut policies {
-            *policy = ((*policy - max) / params.root_pst()).exp();
+            *policy = maths::fast_exp((*policy - max) / params.root_pst());
             total += *policy;
         }
 
