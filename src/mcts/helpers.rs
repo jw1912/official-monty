@@ -21,6 +21,18 @@ impl SearchHelpers {
             cpuct *= 1.0 + params.cpuct_var_weight() * (frac - 1.0);
         }
 
+        // increase CPUCT if the outcome seems certain
+        if parent.visits() > 0 {
+            let q = (parent.q() - 0.5).abs();
+
+            if q >= params.cpuct_desperation_cutoff() {
+                let prior = 32.0 * params.cpuct_desperation_prior();
+                let p = parent.visits() as f32;
+
+                cpuct *= 1.0 + params.cpuct_desperation_multiplier() * p / (prior + p);
+            }
+        }
+
         cpuct
     }
 
