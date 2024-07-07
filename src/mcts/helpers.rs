@@ -1,4 +1,4 @@
-use crate::{mcts::MctsParams, tree::Edge};
+use crate::{mcts::MctsParams, tree::{Edge, Node}};
 
 pub struct SearchHelpers;
 
@@ -28,8 +28,10 @@ impl SearchHelpers {
         (params.expl_tau() * (parent.visits().max(1) as f32).ln()).exp()
     }
 
-    pub fn get_fpu(parent: &Edge) -> f32 {
-        1.0 - parent.q()
+    pub fn get_fpu(params: &MctsParams, parent: &Edge, node: &Node) -> f32 {
+        let parent_q = 1.0 - parent.q();
+        let adj_weight = Self::get_visited_policy(node);
+        parent_q + params.fpu_offset() + params.fpu_factor() * adj_weight
     }
 
     pub fn get_action_value(action: &Edge, fpu: f32) -> f32 {
@@ -38,5 +40,17 @@ impl SearchHelpers {
         } else {
             action.q()
         }
+    }
+
+    pub fn get_visited_policy(node: &Node) -> f32 {
+        let mut sum = 0.0;
+
+        for action in node.actions() {
+            if action.visits() > 0 {
+                sum += action.policy()
+            }
+        }
+
+        sum
     }
 }
