@@ -110,5 +110,5 @@ make_mcts_params! {
     expl_tau: f32 = 0.623, 0.1, 1.0, 0.05, 0.002;
     cpuct_desperation_cutoff: f32 = 0.4, 0.0, 0.5, 0.02, 0.002;
     cpuct_desperation_prior: f32 = 8.0, 0.0, 32.0, 1.6, 0.002;
-    cpuct_desperation_multiplier: f32 = 0.2, 0.0, 1.0, 0.05, 0.002;
+    cpuct_desperation_multiplier: f32 = 0.5, 0.0, 10.0, 0.05, 0.002;
 }
