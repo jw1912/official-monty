@@ -147,7 +147,9 @@ impl ChessState {
 
             mat = _params.material_offset() + mat / _params.material_div1();
 
-            raw_eval * mat / _params.material_div2()
+            let mat_scaled = raw_eval * mat / _params.material_div2();
+
+            mat_scaled * (200 - i32::from(self.board.halfm())) / 200
         }
 
         #[cfg(feature = "datagen")]
