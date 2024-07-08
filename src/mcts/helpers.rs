@@ -61,10 +61,18 @@ impl SearchHelpers {
     /// and a move overhead will be applied to this, so no
     /// need for it here.
     pub fn get_time(remaining: u64, increment: Option<u64>, movestogo: Option<u64>) -> u128 {
-        let base = remaining / movestogo.unwrap_or(30).max(1);
+        let mut mtg = movestogo.unwrap_or(30).max(1);
 
-        let inc = increment.unwrap_or(0) * 3 / 4;
+        let inc = if let Some(inc) = increment {
+            if remaining < 1000 && mtg as f32 / inc as f32 > 0.05 {
+                mtg = (remaining as f64 * 0.05).max(2.0) as u64;
+            }
 
-        u128::from(base + inc)
+            inc * 3 / 4
+        } else {
+            0
+        };
+
+        u128::from(remaining / mtg + inc)
     }
 }
