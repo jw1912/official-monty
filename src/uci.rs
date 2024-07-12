@@ -76,7 +76,8 @@ impl Uci {
                 "perft" => run_perft(&commands, &pos),
                 "quit" => std::process::exit(0),
                 "eval" => {
-                    println!("cp: {}", pos.get_value(value, &params));
+                    println!("raw: {}cp", value.eval(&pos.board()));
+                    println!("scaled: {}cp", pos.get_value(value, &params));
                     println!("wdl: {:.2}%", 100.0 * pos.get_value_wdl(value, &params));
                 }
                 "policy" => {
