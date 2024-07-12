@@ -149,7 +149,7 @@ impl Uci {
             let pos = ChessState::from_fen(fen);
             let mut searcher = Searcher::new(pos, tree, params.clone(), policy, value, &abort);
             let timer = Instant::now();
-            searcher.search(limits, false, &mut total_nodes, &None);
+            searcher.search(limits, false, &mut total_nodes, &None, false);
             time += timer.elapsed().as_secs_f32();
             tree = searcher.tree_and_board().0;
             tree.clear();
@@ -324,7 +324,7 @@ fn go(
 
     std::thread::scope(|s| {
         s.spawn(|| {
-            let (mov, _) = searcher.search(limits, true, &mut 0, &prev);
+            let (mov, _) = searcher.search(limits, true, &mut 0, &prev, true);
             println!("bestmove {}", pos.conv_mov_to_str(mov));
 
             if report_moves {
