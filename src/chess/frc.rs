@@ -37,9 +37,13 @@ impl Castling {
         self.rook_files
     }
 
-    pub fn from_raw(pos: &Board, mut rook_files: [[u8; 2]; 2]) -> Self {
+    pub fn from_raw(pos: &Board, mut rook_files: [[u8; 2]; 2]) -> Option<Self> {
         if rook_files == [[0; 2]; 2] {
             rook_files = [[0, 7]; 2];
+        }
+
+        if rook_files != [[0, 7]; 2] {
+            return None;
         }
 
         let mut ret = Self {
@@ -54,7 +58,7 @@ impl Castling {
         ret.castle_mask[pos.king_sq(0)] = 3;
         ret.castle_mask[pos.king_sq(1)] = 12;
 
-        ret
+        Some(ret)
     }
 
     pub fn parse(&mut self, pos: &Board, rights_str: &str) -> u8 {
