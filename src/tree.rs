@@ -196,6 +196,7 @@ impl Tree {
     pub fn make_root_node(&mut self, node: i32) {
         self.root = node;
         self.parent_edge = *self.edge(self[node].parent(), self[node].action());
+        self.parent_edge.set_ptr(node);
         self[node].clear_parent();
         self[node].set_state(GameState::Ongoing);
     }

@@ -7,6 +7,7 @@ impl SearchHelpers {
     ///
     /// Larger value implies more exploration.
     pub fn get_cpuct(params: &MctsParams, parent: &Edge, is_root: bool) -> f32 {
+        println!("{is_root}");
         // baseline CPUCT value
         let mut cpuct = if is_root {
             params.root_cpuct()
