@@ -81,6 +81,7 @@ impl<'a> Searcher<'a> {
 
         // search loop
         loop {
+            println!("node {}", nodes + 1);
             let mut pos = self.root_position.clone();
             let mut this_depth = 0;
             self.perform_one_iteration(&mut pos, self.tree.root_node(), &mut this_depth);
@@ -271,6 +272,8 @@ impl<'a> Searcher<'a> {
         let expl_scale = SearchHelpers::get_explore_scaling(&self.params, edge);
 
         let expl = cpuct * expl_scale;
+
+        println!("cpuct: {cpuct}, fpu: {fpu}, expl_scale: {expl_scale}");
 
         self.tree.get_best_child_by_key(ptr, |action| {
             let q = SearchHelpers::get_action_value(action, fpu);
