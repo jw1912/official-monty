@@ -4,8 +4,8 @@ pub struct Edge {
     mov: u16,
     policy: i16,
     visits: i32,
-    wins: f32,
-    sq_wins: f32,
+    q: f32,
+    sq_q: f32,
 }
 
 impl Default for Edge {
@@ -15,8 +15,8 @@ impl Default for Edge {
             mov: 0,
             policy: 0,
             visits: 0,
-            wins: 0.0,
-            sq_wins: 0.0,
+            q: 0.0,
+            sq_q: 0.0,
         }
     }
 }
@@ -28,8 +28,8 @@ impl Edge {
             mov,
             policy,
             visits: 0,
-            wins: 0.0,
-            sq_wins: 0.0,
+            q: 0.0,
+            sq_q: 0.0,
         }
     }
 
@@ -49,17 +49,12 @@ impl Edge {
         self.visits
     }
 
-    pub fn wins(&self) -> f32 {
-        self.wins
-    }
-
     pub fn q(&self) -> f32 {
-        self.wins / self.visits as f32
+        self.q
     }
 
     pub fn var(&self) -> f32 {
-        let v = self.visits as f32;
-        let var = self.sq_wins / v - (self.wins / v).powi(2);
+        let var = self.sq_q - self.q.powi(2);
         var.max(0.0)
     }
 
@@ -72,8 +67,9 @@ impl Edge {
     }
 
     pub fn update(&mut self, result: f32) {
+        let v = f64::from(self.visits);
         self.visits += 1;
-        self.wins += result;
-        self.sq_wins += result.powi(2);
+        self.q = ((f64::from(self.q) * v + f64::from(result)) / (v + 1.0)) as f32;
+        self.sq_q = ((f64::from(self.sq_q) * v + f64::from(result.powi(2))) / (v + 1.0)) as f32
     }
 }
