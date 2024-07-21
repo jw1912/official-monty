@@ -146,10 +146,13 @@ impl Uci {
         let abort = AtomicBool::new(false);
 
         for fen in bench_fens {
+            println!("{fen}");
             let pos = ChessState::from_fen(fen);
             let mut searcher = Searcher::new(pos, tree, params.clone(), policy, value, &abort);
             let timer = Instant::now();
+            let old = total_nodes;
             searcher.search(limits, false, &mut total_nodes, &None);
+            println!(" -> {}", total_nodes - old);
             time += timer.elapsed().as_secs_f32();
             tree = searcher.tree_and_board().0;
             tree.clear();
