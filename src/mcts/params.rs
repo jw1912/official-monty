@@ -137,6 +137,7 @@ make_mcts_params! {
     cpuct_var_scale: f32 = 0.257, 0.0, 2.0, 0.02, 0.002;
     cpuct_visits_scale: f32 = 37.3, 1.0, 512.0, 3.2, 0.002;
     expl_tau: f32 = 0.623, 0.1, 1.0, 0.05, 0.002;
+    fpu_var_scale: f32 = 1.5, 1.0, 4.0, 0.2, 0.002;
     knight_value: i32 = 450, 250, 750, 25, 0.002;
     bishop_value: i32 = 450, 250, 750, 25, 0.002;
     rook_value: i32 = 650, 400, 1000, 30, 0.002;

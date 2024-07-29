@@ -38,8 +38,11 @@ impl SearchHelpers {
     ///
     /// #### Note
     /// Must return a value in [0, 1].
-    pub fn get_fpu(parent: &Edge) -> f32 {
-        1.0 - parent.q()
+    pub fn get_fpu(params: &MctsParams, parent: &Edge) -> f32 {
+        let pq = 1.0 - parent.q();
+        let vf = 1.0 + parent.var() / params.fpu_var_scale();
+
+        pq * vf
     }
 
     /// Get a predicted win probability for an action
