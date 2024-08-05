@@ -140,19 +140,19 @@ impl ChessState {
         self.stm()
     }
 
-    pub fn get_policy_feats(&self) -> (goober::SparseVector, u64) {
+    pub fn get_policy_feats(&self) -> goober::SparseVector {
         let mut feats = goober::SparseVector::with_capacity(32);
         self.board.map_policy_features(|feat| feats.push(feat));
-        (feats, self.board.threats())
+        feats
     }
 
     pub fn get_policy(
         &self,
         mov: Move,
-        (feats, threats): &(goober::SparseVector, u64),
+        feats: &goober::SparseVector,
         policy: &PolicyNetwork,
     ) -> f32 {
-        policy.get(&self.board, &mov, feats, *threats)
+        policy.get(&self.board, &mov, feats)
     }
 
     #[cfg(not(feature = "datagen"))]

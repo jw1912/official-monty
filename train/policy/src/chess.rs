@@ -15,16 +15,14 @@ impl TrainablePolicy for PolicyNetwork {
         momentum: &mut Self,
         velocity: &mut Self,
     ) {
-        for (i, subnet_pair) in policy.subnets.iter_mut().enumerate() {
-            for (j, subnet) in subnet_pair.iter_mut().enumerate() {
-                subnet.adam(
-                    &grad.subnets[i][j],
-                    &mut momentum.subnets[i][j],
-                    &mut velocity.subnets[i][j],
-                    adj,
-                    lr,
-                );
-            }
+        for (i, subnet) in policy.subnets.iter_mut().enumerate() {
+            subnet.adam(
+                &grad.subnets[i],
+                &mut momentum.subnets[i],
+                &mut velocity.subnets[i],
+                adj,
+                lr,
+            );
         }
 
         policy
@@ -44,18 +42,15 @@ impl TrainablePolicy for PolicyNetwork {
         let mut max = -1000.0;
 
         let flip = board.flip_val();
-        let threats = board.threats();
 
         for &(mov, visits) in &pos.moves[..pos.num] {
             let mov = <Move as From<u16>>::from(mov);
 
             let from = usize::from(mov.src() ^ flip);
             let to = usize::from(mov.to() ^ flip);
-            let from_threat = usize::from(threats & (1 << mov.src()) > 0);
-            let good_see = usize::from(board.see(&mov, -108));
 
-            let from_out = policy.subnets[from][from_threat].out_with_layers(&feats);
-            let to_out = policy.subnets[to][good_see].out_with_layers(&feats);
+            let from_out = policy.subnets[from].out_with_layers(&feats);
+            let to_out = policy.subnets[to].out_with_layers(&feats);
             let hce_feats = PolicyNetwork::get_hce_feats(&board, &mov);
             let hce_out = policy.hce.out_with_layers(&hce_feats);
             let score =
@@ -66,18 +61,17 @@ impl TrainablePolicy for PolicyNetwork {
             }
 
             total_visits += visits;
-            policies.push((from_out, to_out, hce_out, mov, visits, score, good_see));
+            policies.push((from_out, to_out, hce_out, mov, visits, score));
         }
 
-        for (_, _, _, _, _, score, _) in policies.iter_mut() {
+        for (_, _, _, _, _, score) in policies.iter_mut() {
             *score = (*score - max).exp();
             total += *score;
         }
 
-        for (from_out, to_out, hce_out, mov, visits, score, good_see) in policies {
+        for (from_out, to_out, hce_out, mov, visits, score) in policies {
             let from = usize::from(mov.src() ^ flip);
             let to = usize::from(mov.to() ^ flip);
-            let from_threat = usize::from(threats & (1 << mov.src()) > 0);
             let hce_feats = PolicyNetwork::get_hce_feats(&board, &mov);
 
             let ratio = score / total;
@@ -89,16 +83,16 @@ impl TrainablePolicy for PolicyNetwork {
 
             let factor = err;
 
-            policy.subnets[from][from_threat].backprop(
+            policy.subnets[from].backprop(
                 &feats,
-                &mut grad.subnets[from][from_threat],
+                &mut grad.subnets[from],
                 factor * to_out.output_layer(),
                 &from_out,
             );
 
-            policy.subnets[to][good_see].backprop(
+            policy.subnets[to].backprop(
                 &feats,
-                &mut grad.subnets[to][good_see],
+                &mut grad.subnets[to],
                 factor * from_out.output_layer(),
                 &to_out,
             );
@@ -116,20 +110,16 @@ impl TrainablePolicy for PolicyNetwork {
         let mut policy = Self::boxed_and_zeroed();
 
         let mut rng = Rand::with_seed();
-        for subnet_pair in policy.subnets.iter_mut() {
-            for subnet in subnet_pair.iter_mut() {
-                *subnet = SubNet::from_fn(|| rng.rand_f32(0.2));
-            }
+        for subnet in policy.subnets.iter_mut() {
+            *subnet = SubNet::from_fn(|| rng.rand_f32(0.2));
         }
 
         policy
     }
 
     fn add_without_explicit_lifetime(&mut self, rhs: &Self) {
-        for (ipair, jpair) in self.subnets.iter_mut().zip(rhs.subnets.iter()) {
-            for (i, j) in ipair.iter_mut().zip(jpair.iter()) {
-                *i += j;
-            }
+        for (i, j) in self.subnets.iter_mut().zip(rhs.subnets.iter()) {
+            *i += j;
         }
 
         self.hce += &rhs.hce;
