@@ -4,7 +4,7 @@ use goober::{activation, layer, FeedForwardNetwork, Matrix, SparseVector, Vector
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
-pub const PolicyFileDefaultName: &str = "nn-4cfeeda8d140.network";
+pub const PolicyFileDefaultName: &str = "nn-a0d8daea67c1.network";
 
 #[repr(C)]
 #[derive(Clone, Copy, FeedForwardNetwork)]
@@ -32,14 +32,16 @@ impl SubNet {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct PolicyNetwork {
-    pub subnets: [SubNet; 128],
+    pub from_subnets: [SubNet; 64],
+    pub to_subnets: [SubNet; 64],
     pub hce: layer::DenseConnected<activation::Identity, 4, 1>,
 }
 
 impl PolicyNetwork {
     pub const fn zeroed() -> Self {
         Self {
-            subnets: [SubNet::zeroed(); 128],
+            from_subnets: [SubNet::zeroed(); 64],
+            to_subnets: [SubNet::zeroed(); 64],
             hce: layer::DenseConnected::zeroed(),
         }
     }
@@ -47,10 +49,10 @@ impl PolicyNetwork {
     pub fn get(&self, pos: &Board, mov: &Move, feats: &SparseVector) -> f32 {
         let flip = pos.flip_val();
 
-        let from_subnet = &self.subnets[usize::from(mov.src() ^ flip)];
+        let from_subnet = &self.from_subnets[usize::from(mov.src() ^ flip)];
         let from_vec = from_subnet.out(feats);
 
-        let to_subnet = &self.subnets[usize::from(mov.to() ^ flip)];
+        let to_subnet = &self.to_subnets[usize::from(mov.to() ^ flip)];
         let to_vec = to_subnet.out(feats);
 
         let hce = self.hce.out(&Self::get_hce_feats(pos, mov))[0];

@@ -15,11 +15,21 @@ impl TrainablePolicy for PolicyNetwork {
         momentum: &mut Self,
         velocity: &mut Self,
     ) {
-        for (i, subnet) in policy.subnets.iter_mut().enumerate() {
+        for (i, subnet) in policy.from_subnets.iter_mut().enumerate() {
             subnet.adam(
-                &grad.subnets[i],
-                &mut momentum.subnets[i],
-                &mut velocity.subnets[i],
+                &grad.from_subnets[i],
+                &mut momentum.from_subnets[i],
+                &mut velocity.from_subnets[i],
+                adj,
+                lr,
+            );
+        }
+
+        for (i, subnet) in policy.to_subnets.iter_mut().enumerate() {
+            subnet.adam(
+                &grad.to_subnets[i],
+                &mut momentum.to_subnets[i],
+                &mut velocity.to_subnets[i],
                 adj,
                 lr,
             );
@@ -49,8 +59,8 @@ impl TrainablePolicy for PolicyNetwork {
             let from = usize::from(mov.src() ^ flip);
             let to = usize::from(mov.to() ^ flip);
 
-            let from_out = policy.subnets[from].out_with_layers(&feats);
-            let to_out = policy.subnets[to].out_with_layers(&feats);
+            let from_out = policy.from_subnets[from].out_with_layers(&feats);
+            let to_out = policy.to_subnets[to].out_with_layers(&feats);
             let hce_feats = PolicyNetwork::get_hce_feats(&board, &mov);
             let hce_out = policy.hce.out_with_layers(&hce_feats);
             let score =
@@ -83,16 +93,16 @@ impl TrainablePolicy for PolicyNetwork {
 
             let factor = err;
 
-            policy.subnets[from].backprop(
+            policy.from_subnets[from].backprop(
                 &feats,
-                &mut grad.subnets[from],
+                &mut grad.from_subnets[from],
                 factor * to_out.output_layer(),
                 &from_out,
             );
 
-            policy.subnets[to].backprop(
+            policy.to_subnets[to].backprop(
                 &feats,
-                &mut grad.subnets[to],
+                &mut grad.to_subnets[to],
                 factor * from_out.output_layer(),
                 &to_out,
             );
@@ -110,7 +120,12 @@ impl TrainablePolicy for PolicyNetwork {
         let mut policy = Self::boxed_and_zeroed();
 
         let mut rng = Rand::with_seed();
-        for subnet in policy.subnets.iter_mut() {
+
+        for subnet in policy.from_subnets.iter_mut() {
+            *subnet = SubNet::from_fn(|| rng.rand_f32(0.2));
+        }
+
+        for subnet in policy.to_subnets.iter_mut() {
             *subnet = SubNet::from_fn(|| rng.rand_f32(0.2));
         }
 
@@ -118,7 +133,11 @@ impl TrainablePolicy for PolicyNetwork {
     }
 
     fn add_without_explicit_lifetime(&mut self, rhs: &Self) {
-        for (i, j) in self.subnets.iter_mut().zip(rhs.subnets.iter()) {
+        for (i, j) in self.from_subnets.iter_mut().zip(rhs.from_subnets.iter()) {
+            *i += j;
+        }
+
+        for (i, j) in self.to_subnets.iter_mut().zip(rhs.to_subnets.iter()) {
             *i += j;
         }
 
