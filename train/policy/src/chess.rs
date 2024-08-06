@@ -50,7 +50,7 @@ impl TrainablePolicy for PolicyNetwork {
             let mov = <Move as From<u16>>::from(mov);
 
             let from = usize::from(mov.src() ^ flip);
-            let to = usize::from(mov.to() ^ flip);
+            let to = 64 + usize::from(mov.to() ^ flip);
             let from_threat = usize::from(threats & (1 << mov.src()) > 0);
             let good_see = usize::from(board.see(&mov, -108));
 
@@ -76,7 +76,7 @@ impl TrainablePolicy for PolicyNetwork {
 
         for (from_out, to_out, hce_out, mov, visits, score, good_see) in policies {
             let from = usize::from(mov.src() ^ flip);
-            let to = usize::from(mov.to() ^ flip);
+            let to = 64 + usize::from(mov.to() ^ flip);
             let from_threat = usize::from(threats & (1 << mov.src()) > 0);
             let hce_feats = PolicyNetwork::get_hce_feats(&board, &mov);
 

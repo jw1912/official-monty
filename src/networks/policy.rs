@@ -4,7 +4,7 @@ use goober::{activation, layer, FeedForwardNetwork, Matrix, SparseVector, Vector
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
-pub const PolicyFileDefaultName: &str = "nn-ba0f5b196f0f.network";
+pub const PolicyFileDefaultName: &str = "nn-27d58724b8ab.network";
 
 #[repr(C)]
 #[derive(Clone, Copy, FeedForwardNetwork)]
@@ -52,7 +52,7 @@ impl PolicyNetwork {
         let from_vec = from_subnet.out(feats);
 
         let good_see = usize::from(pos.see(mov, -108));
-        let to_subnet = &self.subnets[usize::from(mov.to() ^ flip)][good_see];
+        let to_subnet = &self.subnets[64 + usize::from(mov.to() ^ flip)][good_see];
         let to_vec = to_subnet.out(feats);
 
         let hce = self.hce.out(&Self::get_hce_feats(pos, mov))[0];
