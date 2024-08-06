@@ -4,6 +4,8 @@ mod consts;
 mod frc;
 mod moves;
 
+use goober::FeedForwardNetwork;
+
 use crate::{MctsParams, PolicyNetwork, ValueNetwork};
 
 pub use self::{board::Board, frc::Castling, moves::Move};
@@ -140,19 +142,26 @@ impl ChessState {
         self.stm()
     }
 
-    pub fn get_policy_feats(&self) -> (goober::SparseVector, u64) {
+    pub fn get_policy_feats(&self, policy: &PolicyNetwork) -> ([goober::Vector<16>; 6], goober::SparseVector, u64) {
         let mut feats = goober::SparseVector::with_capacity(32);
         self.board.map_policy_features(|feat| feats.push(feat));
-        (feats, self.board.threats())
+
+        let mut pc_vecs = [goober::Vector::zeroed(); 6];
+
+        for (pc, vec) in pc_vecs.iter_mut().enumerate() {
+            *vec = policy.pc_subnets[pc].out(&feats)
+        }
+
+        (pc_vecs, feats, self.board.threats())
     }
 
     pub fn get_policy(
         &self,
         mov: Move,
-        (feats, threats): &(goober::SparseVector, u64),
+        (pc_vecs, feats, threats): &([goober::Vector<16>; 6], goober::SparseVector, u64),
         policy: &PolicyNetwork,
     ) -> f32 {
-        policy.get(&self.board, &mov, feats, *threats)
+        policy.get(&self.board, &mov, feats, *threats, pc_vecs)
     }
 
     #[cfg(not(feature = "datagen"))]
@@ -189,7 +198,7 @@ impl ChessState {
     }
 
     pub fn display(&self, policy: &PolicyNetwork) {
-        let feats = self.get_policy_feats();
+        let feats = self.get_policy_feats(policy);
         let mut moves = Vec::new();
         let mut max = f32::NEG_INFINITY;
         self.map_legal_moves(|mov| {
