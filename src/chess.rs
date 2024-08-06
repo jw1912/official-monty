@@ -149,7 +149,9 @@ impl ChessState {
         let mut pc_vecs = [goober::Vector::zeroed(); 6];
 
         for (pc, vec) in pc_vecs.iter_mut().enumerate() {
-            *vec = policy.pc_subnets[pc].out(&feats)
+            if self.board.piece(pc + 2) & self.board.boys() > 0 {
+                *vec = policy.pc_subnets[pc].out(&feats);
+            }
         }
 
         (pc_vecs, feats, self.board.threats())
