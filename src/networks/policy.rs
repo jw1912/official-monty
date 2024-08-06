@@ -4,7 +4,7 @@ use goober::{activation, layer, FeedForwardNetwork, Matrix, SparseVector, Vector
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
-pub const PolicyFileDefaultName: &str = "nn-6b5dc1d7fff9.network";
+pub const PolicyFileDefaultName: &str = "nn-a7af95e30ed6.network";
 
 #[repr(C)]
 #[derive(Clone, Copy, FeedForwardNetwork)]
