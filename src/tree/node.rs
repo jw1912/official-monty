@@ -1,7 +1,6 @@
-use std::sync::{
-    atomic::{AtomicU16, Ordering},
-    RwLock, RwLockReadGuard, RwLockWriteGuard,
-};
+use std::sync::atomic::{AtomicU16, Ordering};
+
+use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::{
     chess::Move,
@@ -35,7 +34,7 @@ impl Node {
     }
 
     pub fn num_actions(&self) -> usize {
-        self.actions.read().unwrap().len()
+        self.actions.read().len()
     }
 
     pub fn threads(&self) -> u16 {
@@ -51,11 +50,11 @@ impl Node {
     }
 
     pub fn actions(&self) -> RwLockReadGuard<Vec<Edge>> {
-        self.actions.read().unwrap()
+        self.actions.read()
     }
 
     pub fn actions_mut(&self) -> RwLockWriteGuard<Vec<Edge>> {
-        self.actions.write().unwrap()
+        self.actions.write()
     }
 
     pub fn state(&self) -> GameState {
@@ -67,7 +66,7 @@ impl Node {
     }
 
     pub fn has_children(&self) -> bool {
-        self.actions.read().unwrap().len() != 0
+        self.actions.read().len() != 0
     }
 
     pub fn is_not_expanded(&self) -> bool {
@@ -75,7 +74,7 @@ impl Node {
     }
 
     pub fn clear(&self) {
-        *self.actions.write().unwrap() = Vec::new();
+        *self.actions.write() = Vec::new();
         self.set_state(GameState::Ongoing);
     }
 
