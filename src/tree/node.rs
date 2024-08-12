@@ -114,7 +114,7 @@ impl Node {
             policy = if ROOT {
                 ((policy - max) / params.root_pst()).exp()
             } else {
-                (policy - max).exp()
+                ((policy - max) / params.pst()).exp()
             };
 
             action.set_ptr(NodePtr::from_raw(f32::to_bits(policy)));
