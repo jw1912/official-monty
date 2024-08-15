@@ -7,7 +7,7 @@ use super::{accumulator::Accumulator, activation::ReLU, layer::Layer, QA};
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
-pub const PolicyFileDefaultName: &str = "nn-d3bc7a24dd46.network";
+pub const PolicyFileDefaultName: &str = "nn-f660dd9884ba.network";
 
 #[repr(C)]
 #[derive(Clone, Copy)]
