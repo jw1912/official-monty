@@ -4,7 +4,7 @@ use super::{activation::SCReLU, layer::Layer, QA};
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
-pub const ValueFileDefaultName: &str = "nn-c58e5f5823c3.network";
+pub const ValueFileDefaultName: &str = "nn-2c9ec2ae186b.network";
 
 const SCALE: i32 = 400;
 
