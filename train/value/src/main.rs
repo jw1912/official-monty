@@ -5,7 +5,7 @@ use bullet::{
 };
 use monty::Board;
 
-const HIDDEN_SIZE: usize = 2048;
+const HIDDEN_SIZE: usize = 512;
 
 fn main() {
     let mut trainer = TrainerBuilder::default()
@@ -36,18 +36,18 @@ fn main() {
         .build();
 
     let schedule = TrainingSchedule {
-        net_id: "12-08-24".to_string(),
+        net_id: "l1-1024-512hl".to_string(),
         eval_scale: 400.0,
         ft_regularisation: 0.0,
         batch_size: 16_384,
         batches_per_superbatch: 6104,
         start_superbatch: 1,
-        end_superbatch: 1200,
+        end_superbatch: 160,
         wdl_scheduler: WdlScheduler::Constant { value: 0.5 },
         lr_scheduler: LrScheduler::Step {
             start: 0.001,
             gamma: 0.1,
-            step: 300,
+            step: 60,
         },
         loss_function: Loss::SigmoidMSE,
         save_rate: 10,
@@ -55,7 +55,7 @@ fn main() {
 
     let settings = LocalSettings {
         threads: 8,
-        data_file_paths: vec!["../monty-data/12-08-24.data"],
+        data_file_paths: vec!["l1-1024.data"],
         output_directory: "checkpoints",
     };
 
@@ -109,7 +109,7 @@ impl inputs::InputType for ThreatInputs {
             bb[usize::from(2 + (pc & 7))] ^= bit;
         }
 
-        let board = Board::from_raw(bb, false, 0, 0, 0);
+        let board = Board::from_raw(bb, false, 0, 0, 0, 1);
 
         let threats = board.threats_by(1);
         let defences = board.threats_by(0);
