@@ -70,11 +70,7 @@ impl SearchHelpers {
         if action.visits() == 0 {
             fpu
         } else {
-            let base_q = action.q();
-            let weight = action.visits().min(32) as f32 / (32.0 * params.value_visits_scale());
-            let var_factor = params.value_var_weight() * action.stats().var();
-
-            base_q + weight * var_factor
+            action.q() + params.value_confidence_interval() * action.stats().var().sqrt()
         }
     }
 
