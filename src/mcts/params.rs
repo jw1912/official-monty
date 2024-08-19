@@ -144,6 +144,10 @@ make_mcts_params! {
     material_offset: i32 = 700, 400, 1200, 40, 0.002;
     material_div1: i32 = 32, 16, 64, 3, 0.002;
     material_div2: i32 = 1024, 512, 1536, 64, 0.002;
+    value_visits_scale: f32 = 1.0, 0.2, 2.0, 0.01, 0.002;
+    value_var_weight: f32 = 0.5, 0.0, 2.0, 0.01, 0.002;
+
+    // tm stuff
     tm_opt_value1: f64 = 0.686, 0.1, 1.2, 0.072, 0.002;
     tm_opt_value2: f64 = 0.392, 0.1, 1.0, 0.045, 0.002;
     tm_opt_value3: f64 = 0.822, 0.1, 1.2, 0.08, 0.002;

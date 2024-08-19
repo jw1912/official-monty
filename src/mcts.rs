@@ -373,7 +373,7 @@ impl<'a> Searcher<'a> {
             let q = if !action.ptr().is_null() && self.tree[action.ptr()].threads() > 0 {
                 0.0
             } else {
-                SearchHelpers::get_action_value(action, fpu)
+                SearchHelpers::get_action_value(self.params, action, fpu)
             };
 
             let u = expl * action.policy() / (1 + action.visits()) as f32;

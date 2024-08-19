@@ -66,11 +66,15 @@ impl SearchHelpers {
     ///
     /// #### Note
     /// Must return a value in [0, 1].
-    pub fn get_action_value(action: &Edge, fpu: f32) -> f32 {
+    pub fn get_action_value(params: &MctsParams, action: &Edge, fpu: f32) -> f32 {
         if action.visits() == 0 {
             fpu
         } else {
-            action.q()
+            let base_q = action.q();
+            let weight = action.visits().min(32) as f32 / (32.0 * params.value_visits_scale());
+            let var_factor = params.value_var_weight() * action.stats().var();
+
+            base_q + weight * var_factor
         }
     }
 
