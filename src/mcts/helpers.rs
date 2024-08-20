@@ -59,7 +59,7 @@ impl SearchHelpers {
     /// #### Note
     /// Must return a value in [0, 1].
     pub fn get_fpu(node_stats: &ActionStats) -> f32 {
-        1.0 - node_stats.q()
+        1.0 - node_stats.q() + 0.1 * node_stats.var().sqrt()
     }
 
     /// Get a predicted win probability for an action
