@@ -70,7 +70,7 @@ impl SearchHelpers {
         if action.visits() == 0 {
             fpu
         } else {
-            action.q() + params.value_confidence_interval() * action.stats().var().sqrt()
+            action.q() - params.value_confidence_interval() * action.stats().var().sqrt()
         }
     }
 
