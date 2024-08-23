@@ -27,7 +27,7 @@ fn main() {
     let res = 0;
     let mut games = 0;
 
-    loop {
+    while games < 1000000 {
         let err = Binpack::deserialise_map(&mut reader, |board, castling, mov, score, result| {
             let mut write = true;
 

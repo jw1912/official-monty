@@ -23,7 +23,7 @@ fn main() {
         .build();
 
     let schedule = TrainingSchedule {
-        net_id: "root-cpuct-1".to_string(),
+        net_id: "root-cpuct-normal".to_string(),
         eval_scale: 400.0,
         ft_regularisation: 0.0,
         batch_size: 16_384,
@@ -53,7 +53,7 @@ fn main() {
         output_directory: "checkpoints",
     };
 
-    let data_loader = loader::DirectSequentialDataLoader::new(&["root-cpuct-1.data"]);
+    let data_loader = loader::DirectSequentialDataLoader::new(&["root-cpuct-normal.data"]);
 
     trainer.run(&schedule, &settings, &data_loader);
 
