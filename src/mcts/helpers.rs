@@ -26,7 +26,8 @@ impl SearchHelpers {
         // scale CPUCT with variance of Q
         if node_stats.visits() > 1 {
             let frac = node_stats.var().sqrt() / params.cpuct_var_scale();
-            cpuct *= 1.0 + params.cpuct_var_weight() * (frac - 1.0);
+            let warmup = (node_stats.visits() as f32 / params.cpuct_var_warmup()).min(1.0);
+            cpuct *= 1.0 + params.cpuct_var_weight() * (frac - 1.0) * warmup;
         }
 
         cpuct
