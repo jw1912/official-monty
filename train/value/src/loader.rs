@@ -1,77 +1,79 @@
 use std::{fs::File, io::BufReader};
 
-use bullet::{format::ChessBoard, loader::DataLoader};
-use datagen::{Binpack, Rand};
+use montyformat::{chess::Position, MontyValueFormat};
 
-#[derive(Clone)]
-pub struct BinpackLoader {
-    file_path: [String; 1],
+use crate::rand::Rand;
+
+pub struct DataLoader {
+    file_path: String,
     buffer_size: usize,
+    batch_size: usize,
 }
 
-impl BinpackLoader {
-    pub fn new(path: &str, buffer_size_mb: usize) -> Self {
+impl DataLoader {
+    pub fn new(path: &str, buffer_size_mb: usize, batch_size: usize) -> Self {
         Self {
-            file_path: [path.to_string(); 1],
-            buffer_size: buffer_size_mb * 1024 * 1024 / std::mem::size_of::<ChessBoard>() / 2,
+            file_path: path.to_string(),
+            buffer_size: buffer_size_mb * 1024 * 1024 / 128,
+            batch_size,
         }
     }
-}
 
-impl DataLoader<ChessBoard> for BinpackLoader {
-    fn data_file_paths(&self) -> &[String] {
-        &self.file_path
-    }
+    pub fn map_batches<F: FnMut(&[(Position, f32)]) -> bool>(&self, mut f: F) {
+        let mut reusable_buffer = Vec::new();
 
-    fn count_positions(&self) -> Option<u64> {
-        None
-    }
-
-    fn map_batches<F: FnMut(&[ChessBoard]) -> bool>(&self, batch_size: usize, mut f: F) {
         let mut shuffle_buffer = Vec::new();
         shuffle_buffer.reserve_exact(self.buffer_size);
 
-        let mut should_break = false;
-
         'dataloading: loop {
-            let mut reader = BufReader::new(File::open(self.file_path[0].as_str()).unwrap());
+            let mut reader = BufReader::new(File::open(self.file_path.as_str()).unwrap());
 
-            loop {
-                let err = Binpack::deserialise_map(&mut reader, |board, _mov, score, result| {
-                    if !(should_break || score == i16::MIN || score.abs() > 2000) {
-                        let position =
-                            ChessBoard::from_raw(board.bbs(), board.stm(), score, result).unwrap();
-                        shuffle_buffer.push(position);
-                    }
+            while let Ok(game) = MontyValueFormat::deserialise_from(&mut reader, Vec::new()) {
+                parse_into_buffer(game, &mut reusable_buffer);
 
-                    if shuffle_buffer.len() == shuffle_buffer.capacity() {
-                        shuffle(&mut shuffle_buffer);
+                if shuffle_buffer.len() + reusable_buffer.len() < shuffle_buffer.capacity() {
+                    shuffle_buffer.extend_from_slice(&reusable_buffer);
+                } else {
+                    println!("#[Shuffling]");
+                    shuffle(&mut shuffle_buffer);
 
-                        for batch in shuffle_buffer.chunks(batch_size) {
-                            should_break |= f(batch);
+                    println!("#[Running Batches]");
+                    for batch in shuffle_buffer.chunks(self.batch_size) {
+                        let should_break = f(batch);
+
+                        if should_break {
+                            break 'dataloading;
                         }
-
-                        shuffle_buffer.clear();
                     }
-                });
 
-                if should_break {
-                    break 'dataloading;
-                }
-
-                if err.is_err() {
-                    break;
+                    println!();
+                    shuffle_buffer.clear();
                 }
             }
         }
     }
 }
 
-fn shuffle(data: &mut [ChessBoard]) {
+fn shuffle(data: &mut [(Position, f32)]) {
     let mut rng = Rand::with_seed();
 
     for i in (0..data.len()).rev() {
         let idx = rng.rand_int() as usize % (i + 1);
         data.swap(idx, i);
+    }
+}
+
+fn parse_into_buffer(game: MontyValueFormat, buffer: &mut Vec<(Position, f32)>) {
+    buffer.clear();
+
+    let mut pos = game.startpos;
+    let castling = game.castling;
+
+    for data in game.moves {
+        if data.score.abs() < 2000 {
+            buffer.push((pos, game.result));
+        }
+
+        pos.make(data.best_move, &castling);
     }
 }
