@@ -71,7 +71,7 @@ fn parse_into_buffer(game: MontyValueFormat, buffer: &mut Vec<(Position, f32)>) 
 
     for data in game.moves {
         if data.score.abs() < 2000 {
-            buffer.push((pos, game.result));
+            buffer.push((pos, 1.0 / (1.0 + (-f32::from(data.score) / 400.0).exp())));
         }
 
         pos.make(data.best_move, &castling);

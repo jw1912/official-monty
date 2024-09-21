@@ -4,7 +4,7 @@ mod sparse_softmax;
 
 use std::io::Write;
 
-use goober::{activation::Identity, layer::DenseConnected, FeedForwardNetwork, Matrix, OutputLayer, Vector};
+use goober::{activation::{Identity, ReLU}, layer::DenseConnected, FeedForwardNetwork, Matrix, OutputLayer, Vector};
 use linear_comb::LinearComb;
 use montyformat::chess::{Piece, Position};
 use one_hot_layer::OneHotLayer;
@@ -49,6 +49,7 @@ impl Network {
         }
 
         let sides = [pos.boys(), pos.opps()];
+        let flip = if pos.stm() > 0 { 56 } else { 0 };
 
         for (stm, &side) in [pos.stm(), 1 - pos.stm()].iter().enumerate() {
             for piece in Piece::PAWN..=Piece::KING {
@@ -57,7 +58,7 @@ impl Network {
                 while bb > 0 {
                     let sq = bb.trailing_zeros() as usize;
 
-                    active.push((sq, 6 * stm + piece - 2));
+                    active.push((sq ^ flip, 6 * stm + piece - 2));
 
                     bb &= bb - 1;
                 }
@@ -87,23 +88,24 @@ impl Network {
 
             for &(sq2, _) in &active {
                 logits[sq1][sq2] /= total;
-            }
-
-            for &(sq2, _) in &active {
                 logit_sums[sq2] += logits[sq1][sq2];
             }
         }
 
         let hl = LinearComb::fwd(&active, &logit_sums, &values);
 
-        let output = self.out.out_with_layers(&hl);
+        let activated = hl.activate::<ReLU>();
+
+        let output = self.out.out_with_layers(&activated);
 
         let predicted = 1.0 / (1.0 + (-output.output_layer()[0]).exp());
         let grd = (predicted - target) * predicted * (1.0 - predicted);
 
         *error += (predicted - target).powi(2);
 
-        let hl_err = self.out.backprop(&hl, &mut grad.out, Vector::from_raw([grd]), &output);
+        let activated_err = self.out.backprop(&hl, &mut grad.out, Vector::from_raw([grd]), &output);
+
+        let hl_err = activated_err * hl.derivative::<ReLU>();
 
         for (i, &(sq1, pc1)) in active.iter().enumerate() {
             self.wv[sq1].backprop(&pc1, &mut grad.wv[sq1], logit_sums[sq1] * hl_err, &values[i]);
@@ -121,23 +123,23 @@ impl Network {
                 self.wk[sq2].backprop(&pc2, &mut grad.wk[sq2], this_err * queries[i].output_layer(), &keys[j]);
             }
         }
-
     }
 
     pub fn rand_init() -> Box<Self> {
         let mut net = Self::boxed_and_zeroed();
 
         let mut rng = Rand::with_seed();
+        let max = 0.2;
         
         for sq in 0..64 {
-            net.wq[sq] = OneHotLayer::from_fn(|| rng.rand_f32(0.2));
-            net.wv[sq] = OneHotLayer::from_fn(|| rng.rand_f32(0.2));
-            net.wk[sq] = OneHotLayer::from_fn(|| rng.rand_f32(0.2));
+            net.wq[sq] = OneHotLayer::from_fn(|| rng.rand_f32(max));
+            net.wv[sq] = OneHotLayer::from_fn(|| rng.rand_f32(max));
+            net.wk[sq] = OneHotLayer::from_fn(|| rng.rand_f32(max));
         }
 
         net.out = DenseConnected::from_raw(
-            Matrix::from_fn(|_, _| rng.rand_f32(0.2)),
-            Vector::from_fn(|_| rng.rand_f32(0.2)),
+            Matrix::from_fn(|_, _| rng.rand_f32(max)),
+            Vector::from_fn(|_| rng.rand_f32(max)),
         );
 
         net
