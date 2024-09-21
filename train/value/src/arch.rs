@@ -12,7 +12,7 @@ use sparse_softmax::SparseSoftmax;
 
 use crate::rand::Rand;
 
-const EMBED: usize = 16;
+const EMBED: usize = 8;
 
 #[repr(C)]
 #[derive(Clone, Copy)]

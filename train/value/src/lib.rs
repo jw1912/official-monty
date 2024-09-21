@@ -9,7 +9,7 @@ use montyformat::chess::Position;
 use std::{io::Write, time::Instant};
 
 const BATCH_SIZE: usize = 16_384;
-const BPSB: usize = 1024;
+const BPSB: usize = 128;
 
 pub fn train(
     buffer_size_mb: usize,
@@ -36,13 +36,14 @@ pub fn train(
 
     data_loader.map_batches(|batch| {
         let mut grad = Network::boxed_and_zeroed();
-        running_error += gradient_batch(threads, &network, &mut grad, batch);
+        let loss = gradient_batch(threads, &network, &mut grad, batch);
+        running_error += loss;
         let adj = 1.0 / batch.len() as f32;
         network.update(&grad, &mut momentum, &mut velocity, adj, lr);
 
         batch_no += 1;
         print!(
-            "> Superbatch {}/{superbatches} Batch {}/{BPSB}\r",
+            "> Superbatch {}/{superbatches} Batch {}/{BPSB} Loss {loss:.5}\r",
             sb + 1,
             batch_no % BPSB,
         );
