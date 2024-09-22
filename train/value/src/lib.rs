@@ -17,8 +17,8 @@ pub fn train(
     data_path: String,
     superbatches: usize,
     lr_start: f32,
-    lr_end: f32,
-    final_lr_superbatch: usize,
+    lr_gamma: f32,
+    lr_drop: usize,
 ) {
     let mut network = Network::rand_init();
 
@@ -35,17 +35,25 @@ pub fn train(
     let mut t = Instant::now();
 
     data_loader.map_batches(|batch| {
+        let t2 = Instant::now();
+
         let mut grad = Network::boxed_and_zeroed();
+
         let loss = gradient_batch(threads, &network, &mut grad, batch);
-        running_error += loss;
+
         let adj = 1.0 / batch.len() as f32;
         network.update(&grad, &mut momentum, &mut velocity, adj, lr);
 
+        let elapsed = t2.elapsed().as_secs_f32();
+
         batch_no += 1;
+        running_error += loss;
+
         print!(
-            "> Superbatch {}/{superbatches} Batch {}/{BPSB} Loss {loss:.5}\r",
+            "> Superbatch {}/{superbatches} Batch {}/{BPSB} Pos/Sec {:.0}k\r",
             sb + 1,
             batch_no % BPSB,
+            batch.len() as f32 / elapsed
         );
         let _ = std::io::stdout().flush();
 
@@ -70,14 +78,10 @@ pub fn train(
 
             running_error = 0.0;
 
-            let decay_factor = (lr_end / lr_start).powf(1.0 / final_lr_superbatch as f32);
-
-            if sb >= final_lr_superbatch {
-                lr = lr_end;
-            } else {
-                lr = lr_start * decay_factor.powf(sb as f32);
+            if sb % lr_drop == 0 {
+                lr *= lr_gamma;
+                println!("Dropping LR to {lr}");
             }
-            println!("Dropping LR to {lr}");
 
             if sb % 10 == 0 {
                 network.write_to_bin(format!("checkpoints/network-{sb}.bin").as_str());
