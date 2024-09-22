@@ -58,7 +58,7 @@ dependencies = [
 [[package]]
 name = "bullet_lib"
 version = "1.0.0"
-source = "git+https://github.com/jw1912/bullet#f39de09c7c9f9f7634b8cf6977df7c02efe0fa74"
+source = "git+https://github.com/jw1912/bullet#70917fb6b8c22d20103c9dbe7580709f62539c2c"
 dependencies = [
  "bindgen",
  "bulletformat",

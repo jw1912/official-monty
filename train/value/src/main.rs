@@ -5,7 +5,7 @@ use bullet::{
     lr, optimiser, outputs, wdl, Activation, LocalSettings, Loss, TrainerBuilder, TrainingSchedule,
 };
 
-const HIDDEN_SIZE: usize = 4096;
+const HIDDEN_SIZE: usize = 128;
 
 fn main() {
     let mut trainer = TrainerBuilder::default()
@@ -15,19 +15,15 @@ fn main() {
         .output_buckets(outputs::Single)
         .feature_transformer(HIDDEN_SIZE)
         .activate(Activation::SCReLU)
-        .add_layer(16)
-        .activate(Activation::SCReLU)
-        .add_layer(128)
-        .activate(Activation::SCReLU)
         .add_layer(1)
         .build();
 
     let schedule = TrainingSchedule {
-        net_id: "4096EXP".to_string(),
+        net_id: "attention-target".to_string(),
         eval_scale: 400.0,
         ft_regularisation: 0.0,
         batch_size: 16_384,
-        batches_per_superbatch: 6104,
+        batches_per_superbatch: 1024,
         start_superbatch: 1,
         end_superbatch: 3000,
         wdl_scheduler: wdl::ConstantWDL { value: 1.0 },
@@ -51,12 +47,12 @@ fn main() {
         threads: 8,
         test_set: None,
         output_directory: "checkpoints",
-        batch_queue_size: 7000,
+        batch_queue_size: 256,
     };
 
     let data_loader = loader::BinpackLoader::new(
-        "/home/admin/monty_value_data/Prepare/interleaved-value.binpack",
-        48000,
+        "../binpacks/new-data.binpack",
+        4096,
     );
 
     trainer.run(&schedule, &settings, &data_loader);
