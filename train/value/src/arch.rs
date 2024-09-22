@@ -12,7 +12,7 @@ use sparse_softmax::SparseSoftmax;
 
 use crate::rand::Rand;
 
-const EMBED: usize = 8;
+const EMBED: usize = 32;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -41,12 +41,8 @@ impl Network {
         self.out.adam(&grad.out, &mut momentum.out, &mut velocity.out, adj, lr);
     }
 
-    pub fn update_single_grad(&self, (pos, mut target): &(Position, f32), grad: &mut Self, error: &mut f32) {
+    pub fn update_single_grad(&self, (pos, target): &(Position, f32), grad: &mut Self, error: &mut f32) {
         let mut active = Vec::new();
-
-        if pos.stm() > 0 {
-            target = 1.0 - target;
-        }
 
         let sides = [pos.boys(), pos.opps()];
         let flip = if pos.stm() > 0 { 56 } else { 0 };

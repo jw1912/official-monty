@@ -8,9 +8,9 @@ fn main() {
         buffer_size_mb,
         threads,
         "../binpacks/new-data.binpack".to_string(),
-        10,
+        40,
         0.001,
         0.1,
-        4,
+        18,
     );
 }

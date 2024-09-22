@@ -70,7 +70,7 @@ fn parse_into_buffer(game: MontyValueFormat, buffer: &mut Vec<(Position, f32)>) 
     let castling = game.castling;
 
     for data in game.moves {
-        if data.score.abs() < 2000 {
+        if data.score.abs() < 2000 && !pos.in_check() && !data.best_move.is_capture() {
             buffer.push((pos, 1.0 / (1.0 + (-f32::from(data.score) / 400.0).exp())));
         }
 
