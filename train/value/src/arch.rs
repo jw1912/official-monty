@@ -75,10 +75,17 @@ impl Network {
         }
 
         for (i, &(sq1, _)) in active.iter().enumerate() {
-            let mut total = 0.0;
+            let mut max = 0f32;            
 
             for (j, &(sq2, _)) in active.iter().enumerate() {
-                logits[sq1][sq2] = queries[i].output_layer().dot(&keys[j].output_layer()).exp();
+                logits[sq1][sq2] = queries[i].output_layer().dot(&keys[j].output_layer());
+                max = max.max(logits[sq1][sq2]);
+            }
+
+            let mut total = 0.0;
+
+            for &(sq2, _) in &active {
+                logits[sq1][sq2] = (logits[sq1][sq2] - max).exp();
                 total += logits[sq1][sq2];
             }
 
