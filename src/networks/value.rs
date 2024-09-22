@@ -6,11 +6,11 @@ use super::{
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
-pub const ValueFileDefaultName: &str = "nn-fa01a09353e9.network";
+pub const ValueFileDefaultName: &str = "nn-f0af0e30bc8c.network";
 
 const SCALE: i32 = 400;
 
-const DI: usize = 12;
+const DI: usize = 48;
 const DK: usize = 32;
 const DV: usize = 8;
 const D1: usize = 16;
@@ -32,6 +32,9 @@ impl ValueNetwork {
         let mut pieces = [0; 32];
     
         let flip = if pos.stm() > 0 { 56 } else { 0 };
+
+        let threats = pos.threats_by(1 - pos.stm());
+        let defences = pos.threats_by(pos.stm());
     
         for (stm, &side) in [pos.stm(), 1 - pos.stm()].iter().enumerate() {
             for piece in Piece::PAWN..=Piece::KING {
@@ -39,9 +42,12 @@ impl ValueNetwork {
     
                 while bb > 0 {
                     let sq = bb.trailing_zeros() as usize;
+
+                    let bit = 1 << sq;
+                    let state = usize::from(bit & threats > 0) + 2 * usize::from(bit & defences > 0);
     
                     squares[num_pieces] = sq ^ flip;
-                    pieces[num_pieces] = 6 * stm + piece - 2;
+                    pieces[num_pieces] = 12 * state + 6 * stm + piece - 2;
                     num_pieces += 1;
     
                     bb &= bb - 1;

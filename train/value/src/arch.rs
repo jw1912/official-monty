@@ -25,9 +25,9 @@ struct OutputHead {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Network {
-    wq: [OneHotLayer<12, DK>; 64],
-    wk: [OneHotLayer<12, DK>; 64],
-    wv: [OneHotLayer<12, DV>; 64],
+    wq: [OneHotLayer<48, DK>; 64],
+    wk: [OneHotLayer<48, DK>; 64],
+    wv: [OneHotLayer<48, DV>; 64],
     out: OutputHead,
 }
 
@@ -56,6 +56,9 @@ impl Network {
             target = 1.0 - target;
         }
 
+        let threats = pos.threats_by(1 - pos.stm());
+        let defences = pos.threats_by(pos.stm());
+
         let flip = if pos.stm() > 0 { 56 } else { 0 };
 
         for (stm, &side) in [pos.stm(), 1 - pos.stm()].iter().enumerate() {
@@ -65,7 +68,10 @@ impl Network {
                 while bb > 0 {
                     let sq = bb.trailing_zeros() as usize;
 
-                    active.push((sq ^ flip, 6 * stm + piece - 2));
+                    let bit = 1 << sq;
+                    let state = usize::from(bit & threats > 0) + 2 * usize::from(bit & defences > 0);
+
+                    active.push((sq ^ flip, 12 * state + 6 * stm + piece - 2));
 
                     bb &= bb - 1;
                 }
