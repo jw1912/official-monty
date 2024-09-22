@@ -16,13 +16,19 @@ const DK: usize = 32;
 const DV: usize = 8;
 
 #[repr(C)]
+#[derive(Clone, Copy, FeedForwardNetwork)]
+struct OutputHead {
+    l1: DenseConnected<ReLU, {DV * 64}, 16>,
+    l2: DenseConnected<Identity, 16, 1>,
+}
+
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Network {
     wq: [OneHotLayer<12, DK>; 64],
     wk: [OneHotLayer<12, DK>; 64],
     wv: [OneHotLayer<12, DV>; 64],
-    l1: DenseConnected<ReLU, {DV * 64}, 16>,
-    l2: DenseConnected<Identity, 16, 1>,
+    out: OutputHead,
 }
 
 impl Network {
@@ -40,8 +46,7 @@ impl Network {
             self.wk[sq].adam(&grad.wk[sq], &mut momentum.wk[sq], &mut velocity.wk[sq], adj, lr);
         }
 
-        self.l1.adam(&grad.l1, &mut momentum.l1, &mut velocity.l1, adj, lr);
-        self.l2.adam(&grad.l2, &mut momentum.l2, &mut velocity.l2, adj, lr);
+        self.out.adam(&grad.out, &mut momentum.out, &mut velocity.out, adj, lr);
     }
 
     pub fn update_single_grad(&self, (pos, mut target): &(Position, f32), grad: &mut Self, error: &mut f32) {
@@ -111,18 +116,15 @@ impl Network {
         }
 
         let activated = concat.activate::<ReLU>();
+        let out = self.out.out_with_layers(&activated);
 
-        let l1 = self.l1.out_with_layers(&activated);
-        let l2 = self.l2.out_with_layers(&l1.output_layer());
-
-        let predicted = 1.0 / (1.0 + (-l2.output_layer()[0]).exp());
+        let predicted = 1.0 / (1.0 + (-out.output_layer()[0]).exp());
         let grd = (predicted - target) * predicted * (1.0 - predicted);
 
         *error += (predicted - target).powi(2);
 
-        let l2_err = self.l2.backprop(&l1.output_layer(), &mut grad.l2, Vector::from_raw([grd]), &l2);
-        let l1_err = self.l1.backprop(&activated, &mut grad.l1, l2_err, &l1);
-        let concat_err = l1_err * concat.derivative::<ReLU>();
+        let activated_err = self.out.backprop(&activated, &mut grad.out, Vector::from_raw([grd]), &out);
+        let concat_err = activated_err * concat.derivative::<ReLU>();
 
         for (i, &(sq1, pc1)) in active.iter().enumerate() {
             let mut head_err = Vector::zeroed();
@@ -155,12 +157,12 @@ impl Network {
             net.wk[sq] = OneHotLayer::from_fn(|| rng.rand_f32(max));
         }
 
-        net.l1 = DenseConnected::from_raw(
+        net.out.l1 = DenseConnected::from_raw(
             Matrix::from_fn(|_, _| rng.rand_f32(max)),
             Vector::from_fn(|_| rng.rand_f32(max)),
         );
 
-        net.l2 = DenseConnected::from_raw(
+        net.out.l2 = DenseConnected::from_raw(
             Matrix::from_fn(|_, _| rng.rand_f32(max)),
             Vector::from_fn(|_| rng.rand_f32(max)),
         );
@@ -175,8 +177,7 @@ impl Network {
             self.wk[sq] += &rhs.wk[sq];
         }
 
-        self.l1 += &rhs.l1;
-        self.l2 += &rhs.l2;
+        self.out += &rhs.out;
     }
 
     pub fn boxed_and_zeroed() -> Box<Self> {
