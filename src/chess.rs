@@ -6,7 +6,7 @@ mod moves;
 
 use crate::{MctsParams, PolicyNetwork, ValueNetwork};
 
-pub use self::{board::Board, frc::Castling, moves::Move};
+pub use self::{consts::Piece, board::Board, frc::Castling, moves::Move};
 
 const STARTPOS: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 

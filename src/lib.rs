@@ -4,7 +4,7 @@ mod networks;
 mod tree;
 mod uci;
 
-pub use chess::{Board, Castling, ChessState, GameState, Move};
+pub use chess::{Board, Castling, ChessState, GameState, Move, Piece};
 pub use mcts::{Limits, MctsParams, Searcher};
 pub use networks::{
     PolicyFileDefaultName, PolicyNetwork, UnquantisedPolicyNetwork, UnquantisedValueNetwork,
