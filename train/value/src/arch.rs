@@ -41,15 +41,18 @@ impl Network {
         self.out.adam(&grad.out, &mut momentum.out, &mut velocity.out, adj, lr);
     }
 
-    pub fn update_single_grad(&self, (pos, target): &(Position, f32), grad: &mut Self, error: &mut f32) {
+    pub fn update_single_grad(&self, (pos, mut target): &(Position, f32), grad: &mut Self, error: &mut f32) {
         let mut active = Vec::new();
 
-        let sides = [pos.boys(), pos.opps()];
+        if pos.stm() > 0 {
+            target = 1.0 - target;
+        }
+
         let flip = if pos.stm() > 0 { 56 } else { 0 };
 
         for (stm, &side) in [pos.stm(), 1 - pos.stm()].iter().enumerate() {
             for piece in Piece::PAWN..=Piece::KING {
-                let mut bb = sides[side] & pos.piece(piece);
+                let mut bb = pos.piece(side) & pos.piece(piece);
 
                 while bb > 0 {
                     let sq = bb.trailing_zeros() as usize;
