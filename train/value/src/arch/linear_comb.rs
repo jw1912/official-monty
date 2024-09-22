@@ -1,25 +1,25 @@
 use goober::{OutputLayer, Vector};
 
-use super::one_hot_layer::OneHotLayerLayers;
+use super::{bitboard_layer::BitboardLayerLayers, TOKENS};
 
 pub struct LinearComb<const N: usize>;
 
 impl<const N: usize> LinearComb<N> {
-    pub fn fwd(active: &[(usize, usize)], weights: &[f32; 64], vecs: &[OneHotLayerLayers<N>]) -> Vector<N> {
+    pub fn fwd(weights: &[f32; TOKENS], vecs: &[BitboardLayerLayers<N>; TOKENS]) -> Vector<N> {
         let mut res = Vector::zeroed();
 
-        for (i, &(sq, _)) in active.iter().enumerate() {
-            res += weights[sq] * vecs[i].output_layer();
+        for pc in 0..TOKENS {
+            res += weights[pc] * vecs[pc].output_layer();
         }
 
         res
     }
 
-    pub fn backprop(active: &[(usize, usize)], vecs: &[OneHotLayerLayers<N>], err: Vector<N>) -> [f32; 64] {
-        let mut errs = [0.0; 64];
+    pub fn backprop(vecs: &[BitboardLayerLayers<N>; TOKENS], err: Vector<N>) -> [f32; TOKENS] {
+        let mut errs = [0.0; TOKENS];
 
-        for (i, &(sq, _)) in active.iter().enumerate() {
-            errs[sq] = vecs[i].output_layer().dot(&err)
+        for pc in 0..TOKENS {
+            errs[pc] = vecs[pc].output_layer().dot(&err)
         }
 
         errs

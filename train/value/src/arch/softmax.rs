@@ -1,18 +1,20 @@
 use goober::{Matrix, Vector};
 
+use super::TOKENS;
+
 pub struct Softmax;
 
 impl Softmax {
-    pub fn backprop(output: &[f32; 64], err: &[f32; 64]) -> Vector<64> {
-        let mut jacobian = [Vector::<64>::zeroed(); 64];
+    pub fn backprop(output: &[f32; TOKENS], err: &[f32; TOKENS]) -> Vector<TOKENS> {
+        let mut jacobian = [Vector::<TOKENS>::zeroed(); TOKENS];
 
-        for sq1 in 0..64 {
-            for sq2 in 0..64 {
+        for sq1 in 0..TOKENS {
+            for sq2 in 0..TOKENS {
                 jacobian[sq1][sq2] = -output[sq1] * output[sq2];
             }
         }
 
-        for sq in 0..64 {
+        for sq in 0..TOKENS {
             jacobian[sq][sq] += output[sq];
         }
 
