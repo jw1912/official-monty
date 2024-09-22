@@ -51,7 +51,7 @@ impl Network {
         self.out.adam(&grad.out, &mut momentum.out, &mut velocity.out, adj, lr);
     }
 
-    pub fn update_single_grad(&self, (pos, mut target): &(Position, f32), grad: &mut Self, error: &mut f32) {
+    pub fn update_single_grad(&self, (pos, mut target): &(Position, f32), grad: &mut Self, error: &mut f32, print: bool) {
         let mut bitboards = [[0; 4]; TOKENS];
 
         if pos.stm() > 0 {
@@ -128,6 +128,10 @@ impl Network {
 
         let activated = concat.activate::<ReLU>();
         let out = self.out.out_with_layers(&activated);
+
+        if print {
+            println!("EVAL: {}", 400.0 * out.output_layer()[0]);
+        }
 
         let predicted = 1.0 / (1.0 + (-out.output_layer()[0]).exp());
         let grd = (predicted - target) * predicted * (1.0 - predicted);
