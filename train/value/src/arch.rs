@@ -12,15 +12,16 @@ use sparse_softmax::SparseSoftmax;
 
 use crate::rand::Rand;
 
-const EMBED: usize = 32;
+const DK: usize = 32;
+const DV: usize = 8;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Network {
-    wq: [OneHotLayer<12, EMBED>; 64],
-    wv: [OneHotLayer<12, EMBED>; 64],
-    wk: [OneHotLayer<12, EMBED>; 64],
-    out: DenseConnected<Identity, EMBED, 1>,
+    wq: [OneHotLayer<12, DK>; 64],
+    wk: [OneHotLayer<12, DK>; 64],
+    wv: [OneHotLayer<12, DV>; 64],
+    out: DenseConnected<Identity, {DV * 64}, 1>,
 }
 
 impl Network {
@@ -65,7 +66,6 @@ impl Network {
         }
 
         let mut logits = [[0.0; 64]; 64];
-        let mut logit_sums = [0.0; 64];
 
         let mut queries = Vec::new();
         let mut keys = Vec::new();
@@ -76,6 +76,9 @@ impl Network {
             keys.push(self.wk[sq].out_with_layers(&pc));
             values.push(self.wv[sq].out_with_layers(&pc));
         }
+
+        let mut heads = Vec::new();
+        let mut concat = Vector::zeroed();
 
         for (i, &(sq1, _)) in active.iter().enumerate() {
             let mut max = 0f32;            
@@ -94,13 +97,18 @@ impl Network {
 
             for &(sq2, _) in &active {
                 logits[sq1][sq2] /= total;
-                logit_sums[sq2] += logits[sq1][sq2];
             }
+
+            let head = LinearComb::fwd(&active, &logits[sq1], &values);
+
+            for j in 0..DV {
+                concat[sq1 * DV + j] = head[j];
+            }
+
+            heads.push(head);
         }
 
-        let hl = LinearComb::fwd(&active, &logit_sums, &values);
-
-        let activated = hl.activate::<ReLU>();
+        let activated = concat.activate::<ReLU>();
 
         let output = self.out.out_with_layers(&activated);
 
@@ -109,24 +117,25 @@ impl Network {
 
         *error += (predicted - target).powi(2);
 
-        let activated_err = self.out.backprop(&hl, &mut grad.out, Vector::from_raw([grd]), &output);
+        let activated_err = self.out.backprop(&activated, &mut grad.out, Vector::from_raw([grd]), &output);
 
-        let hl_err = activated_err * hl.derivative::<ReLU>();
-
-        for (i, &(sq1, pc1)) in active.iter().enumerate() {
-            self.wv[sq1].backprop(&pc1, &mut grad.wv[sq1], logit_sums[sq1] * hl_err, &values[i]);
-        }
-
-        let logit_sum_err = LinearComb::backprop(&active, &values, hl_err);
+        let concat_err = activated_err * concat.derivative::<ReLU>();
 
         for (i, &(sq1, pc1)) in active.iter().enumerate() {
-            let this_sm_err = SparseSoftmax::backprop(&active, &logits[sq1], &logit_sum_err);
+            let mut head_err = Vector::zeroed();
+            for j in 0..DV {
+                head_err[j] = concat_err[sq1 * DV + j];
+            }
+
+            let logit_sum_err = LinearComb::backprop(&active, &values, head_err);
+            let sm_err = SparseSoftmax::backprop(&active, &logits[sq1], &logit_sum_err);
 
             for (j, &(sq2, pc2)) in active.iter().enumerate() {
-                let this_err = this_sm_err[sq2];
+                let this_err = sm_err[sq2];
 
                 self.wq[sq1].backprop(&pc1, &mut grad.wq[sq1], this_err * keys[j].output_layer(), &queries[i]);
                 self.wk[sq2].backprop(&pc2, &mut grad.wk[sq2], this_err * queries[i].output_layer(), &keys[j]);
+                self.wv[sq2].backprop(&pc2, &mut grad.wv[sq2], logits[sq1][sq2] * head_err, &values[j]);
             }
         }
     }

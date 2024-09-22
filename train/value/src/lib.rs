@@ -84,7 +84,7 @@ pub fn train(
             }
 
             if sb % 10 == 0 {
-                network.write_to_bin(format!("checkpoints/network-{sb}.bin").as_str());
+                network.write_to_bin(format!("checkpoints/value-{sb}.bin").as_str());
             }
 
             sb == superbatches
