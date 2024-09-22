@@ -23,14 +23,14 @@ fn main() {
         eval_scale: 400.0,
         ft_regularisation: 0.0,
         batch_size: 16_384,
-        batches_per_superbatch: 1024,
+        batches_per_superbatch: 128,
         start_superbatch: 1,
-        end_superbatch: 3000,
+        end_superbatch: 40,
         wdl_scheduler: wdl::ConstantWDL { value: 1.0 },
-        lr_scheduler: lr::ExponentialDecayLR {
-            initial_lr: 0.001,
-            final_lr: 0.0000001,
-            final_superbatch: 3000,
+        lr_scheduler: lr::StepLR {
+            start: 0.001,
+            step: 18,
+            gamma: 0.1,
         },
         loss_function: Loss::SigmoidMSE,
         save_rate: 20,
@@ -44,7 +44,7 @@ fn main() {
     };
 
     let settings = LocalSettings {
-        threads: 8,
+        threads: 4,
         test_set: None,
         output_directory: "checkpoints",
         batch_queue_size: 256,
