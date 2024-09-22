@@ -1,6 +1,6 @@
 mod linear_comb;
 mod one_hot_layer;
-mod sparse_softmax;
+mod softmax;
 
 use std::io::Write;
 
@@ -8,7 +8,7 @@ use goober::{activation::{Identity, ReLU}, layer::DenseConnected, FeedForwardNet
 use linear_comb::LinearComb;
 use montyformat::chess::{Piece, Position};
 use one_hot_layer::OneHotLayer;
-use sparse_softmax::SparseSoftmax;
+use softmax::Softmax;
 
 use crate::rand::Rand;
 
@@ -97,12 +97,12 @@ impl Network {
 
             let mut total = 0.0;
 
-            for &(sq2, _) in &active {
+            for sq2 in 0..64 {
                 logits[sq1][sq2] = (logits[sq1][sq2] - max).exp();
                 total += logits[sq1][sq2];
             }
 
-            for &(sq2, _) in &active {
+            for sq2 in 0..64 {
                 logits[sq1][sq2] /= total;
             }
 
@@ -133,7 +133,7 @@ impl Network {
             }
 
             let logit_sum_err = LinearComb::backprop(&active, &values, head_err);
-            let sm_err = SparseSoftmax::backprop(&active, &logits[sq1], &logit_sum_err);
+            let sm_err = Softmax::backprop(&logits[sq1], &logit_sum_err);
 
             for (j, &(sq2, pc2)) in active.iter().enumerate() {
                 let this_err = sm_err[sq2];
