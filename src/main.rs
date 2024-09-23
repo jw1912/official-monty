@@ -11,7 +11,7 @@ mod net {
     use monty::{ChessState, MctsParams, PolicyNetwork, Uci, ValueNetwork};
 
     static VALUE: ValueNetwork =
-        unsafe { std::mem::transmute(*include_bytes!("../checkpoints/value-40.bin")) };
+        unsafe { std::mem::transmute(*include_bytes!("../resources/value.network")) };
     static POLICY: PolicyNetwork =
         unsafe { std::mem::transmute(*include_bytes!("../resources/policy.network")) };
 

@@ -9,7 +9,7 @@ use montyformat::chess::{Castling, Position};
 use std::{io::Write, time::Instant};
 
 const BATCH_SIZE: usize = 16_384;
-const BPSB: usize = 128;
+const BPSB: usize = 6104;
 
 pub fn train(
     buffer_size_mb: usize,
