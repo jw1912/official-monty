@@ -6,7 +6,7 @@ use super::{
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
-pub const ValueFileDefaultName: &str = "nn-b29dff2acbdd.network";
+pub const ValueFileDefaultName: &str = "../montytrain/checkpoints/value/network-1.network";
 
 const SCALE: i32 = 400;
 
@@ -76,6 +76,8 @@ impl ValueNetwork {
                 for k in 0..DK {
                     temps[j] += query[k] * key[k]
                 }
+
+                temps[j] /= (DK as f32).sqrt();
     
                 max = max.max(temps[j]);
             }
