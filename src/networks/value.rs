@@ -6,7 +6,7 @@ use super::{
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
-pub const ValueFileDefaultName: &str = "../montytrain/checkpoints/value/network-1.network";
+pub const ValueFileDefaultName: &str = "nn-232535a63f1f.network";
 
 const SCALE: i32 = 400;
 
