@@ -6,14 +6,14 @@ use super::{
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
-pub const ValueFileDefaultName: &str = "nn-232535a63f1f.network";
+pub const ValueFileDefaultName: &str = "nn-e4366ce3577e.network";
 
 const SCALE: i32 = 400;
 
 const TOKENS: usize = 12;
 const DI: usize = 256;
-const DK: usize = 32;
-const DV: usize = 8;
+const DK: usize = 128;
+const DV: usize = 32;
 const D1: usize = 16;
 
 #[repr(C)]
