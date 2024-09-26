@@ -6,11 +6,11 @@ use super::{
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
-pub const ValueFileDefaultName: &str = "nn-ae1773f14c34.network";
+pub const ValueFileDefaultName: &str = "../montytrain/checkpoints/value/network-1.network";
 
 const SCALE: i32 = 400;
 
-const TOKENS: usize = 12;
+const TOKENS: usize = 13;
 const DI: usize = 256;
 const DK: usize = 32;
 const DV: usize = 64;
@@ -18,9 +18,12 @@ const D1: usize = 16;
 
 #[repr(C)]
 pub struct ValueNetwork {
-    wq: [[Accumulator<f32, DK>; DI]; TOKENS],
-    wk: [[Accumulator<f32, DK>; DI]; TOKENS],
-    wv: [[Accumulator<f32, DV>; DI]; TOKENS],
+    wq: [[Accumulator<f32, DK>; DI]; TOKENS - 1],
+    wk: [[Accumulator<f32, DK>; DI]; TOKENS - 1],
+    wv: [[Accumulator<f32, DV>; DI]; TOKENS - 1],
+    wq_board: [Accumulator<f32, DK>; 768],
+    wk_board: [Accumulator<f32, DK>; 768],
+    wv_board: [Accumulator<f32, DV>; 768],
     l1: Layer<f32, {TOKENS * DV}, D1>,
     l2: Layer<f32, D1, 1>,
 }
@@ -28,6 +31,9 @@ pub struct ValueNetwork {
 impl ValueNetwork {
     pub fn eval(&self, pos: &Board) -> i32 {
         let mut bitboards = [[0; 4]; TOKENS];
+        let mut queries = [[0.0; DK]; TOKENS];
+        let mut keys = [[0.0; DK]; TOKENS];
+        let mut values = [[0.0; DV]; TOKENS];
 
         let threats = pos.threats_by(1 - pos.stm());
         let defences = pos.threats_by(pos.stm());
@@ -37,6 +43,7 @@ impl ValueNetwork {
         for (stm, &side) in [pos.stm(), 1 - pos.stm()].iter().enumerate() {
             for piece in Piece::PAWN..=Piece::KING {
                 let mut input_bbs = [0; 4];
+                let base = 384 * stm + 64 * (piece - 2);
 
                 let mut bb = pos.piece(side) & pos.piece(piece);
                 while bb > 0 {
@@ -47,6 +54,11 @@ impl ValueNetwork {
 
                     input_bbs[state] ^= 1 << (sq ^ flip);
 
+                    let feat = base + (sq ^ flip);
+                    add_into(&self.wq_board[feat], &mut queries[TOKENS - 1]);
+                    add_into(&self.wk_board[feat], &mut keys[TOKENS - 1]);
+                    add_into(&self.wv_board[feat], &mut values[TOKENS - 1]);
+
                     bb &= bb - 1;
                 }
 
@@ -54,11 +66,7 @@ impl ValueNetwork {
             }
         }
 
-        let mut queries = [[0.0; DK]; TOKENS];
-        let mut keys = [[0.0; DK]; TOKENS];
-        let mut values = [[0.0; DV]; TOKENS];
-
-        for i in 0..TOKENS {
+        for i in 0..TOKENS - 1 {
             embed_into(&bitboards[i], &self.wq[i], &mut queries[i]);
             embed_into(&bitboards[i], &self.wk[i], &mut keys[i]);
             embed_into(&bitboards[i], &self.wv[i], &mut values[i]);
@@ -120,6 +128,12 @@ fn embed_into<const N: usize>(input: &[u64; 4], weights: &[Accumulator<f32, N>; 
 
             bb &= bb - 1;
         }
+    }
+}
+
+fn add_into<const N: usize>(weights: &Accumulator<f32, N>, out: &mut [f32; N]) {
+    for (o, &w) in out.iter_mut().zip(weights.0.iter()) {
+        *o += w;
     }
 }
 
