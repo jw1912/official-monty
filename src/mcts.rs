@@ -361,6 +361,7 @@ impl<'a> Searcher<'a> {
             SearchHelpers::get_explore_scaling(self.params, node_stats, &self.tree[ptr]);
 
         let expl = cpuct * expl_scale;
+        let var = node_stats.var();
 
         self.tree.get_best_child_by_key(ptr, |action| {
             let mut q = SearchHelpers::get_action_value(action, fpu);
@@ -377,7 +378,10 @@ impl<'a> Searcher<'a> {
 
             let u = expl * action.policy() / (1 + action.visits()) as f32;
 
-            q + u
+            let var_inflation = self.params.var_inflation() / (1 + action.visits()) as f32;
+            let v = self.params.var_weight() * (var + var_inflation).sqrt();
+
+            q + u + v
         })
     }
 
