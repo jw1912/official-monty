@@ -107,7 +107,7 @@ impl Node {
             return;
         }
 
-        let feats = pos.get_policy_feats();
+        let feats = pos.get_policy_feats(policy);
         let mut max = f32::NEG_INFINITY;
 
         pos.map_legal_moves(|mov| {
@@ -161,7 +161,7 @@ impl Node {
         policy: &PolicyNetwork,
         depth: u8,
     ) {
-        let feats = pos.get_policy_feats();
+        let feats = pos.get_policy_feats(policy);
         let mut max = f32::NEG_INFINITY;
 
         let mut policies = Vec::new();

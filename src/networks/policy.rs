@@ -9,16 +9,16 @@ const QA: i16 = 512;
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
-pub const PolicyFileDefaultName: &str = "nn-1ae77eae7e49.network";
+pub const PolicyFileDefaultName: &str = "nn-3329fb7f6624.network";
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-struct SubNet {
+pub struct SubNet {
     ft: Layer<i16, 768, 16>,
 }
 
 impl SubNet {
-    fn out(&self, feats: &[usize]) -> Accumulator<i16, 16> {
+    pub fn out(&self, feats: &[usize]) -> Accumulator<i16, 16> {
         self.ft.forward_from_slice(feats)
     }
 }
@@ -26,21 +26,24 @@ impl SubNet {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct PolicyNetwork {
-    subnets: [[SubNet; 2]; 128],
+    subnets: [SubNet; 128],
+    pub(crate) good_see_subnet: SubNet,
     hce: Layer<f32, 4, 1>,
 }
 
 impl PolicyNetwork {
-    pub fn get(&self, pos: &Board, mov: &Move, feats: &[usize], threats: u64) -> f32 {
+    pub fn get(&self, pos: &Board, mov: &Move, feats: &[usize], good_see: &Accumulator<i16, 16>) -> f32 {
         let flip = pos.flip_val();
 
-        let from_threat = usize::from(threats & (1 << mov.src()) > 0);
-        let from_subnet = &self.subnets[usize::from(mov.src() ^ flip)][from_threat];
+        let from_subnet = &self.subnets[usize::from(mov.src() ^ flip)];
         let from_vec = from_subnet.out(feats);
 
-        let good_see = usize::from(pos.see(mov, -108));
-        let to_subnet = &self.subnets[64 + usize::from(mov.to() ^ flip)][good_see];
-        let to_vec = to_subnet.out(feats);
+        let to_subnet = &self.subnets[64 + usize::from(mov.to() ^ flip)];
+        let mut to_vec = to_subnet.out(feats);
+
+        if pos.see(mov, -108) {
+            to_vec.add(good_see);
+        }
 
         let hce = self.hce.forward::<ReLU>(&Self::get_hce_feats(pos, mov)).0[0];
 
@@ -75,7 +78,8 @@ impl UnquantisedSubNet {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct UnquantisedPolicyNetwork {
-    subnets: [[UnquantisedSubNet; 2]; 128],
+    subnets: [UnquantisedSubNet; 128],
+    good_see_subnet: UnquantisedSubNet,
     hce: Layer<f32, 4, 1>,
 }
 
@@ -83,11 +87,11 @@ impl UnquantisedPolicyNetwork {
     pub fn quantise(&self) -> Box<PolicyNetwork> {
         let mut quant: Box<PolicyNetwork> = unsafe { boxed_and_zeroed() };
 
-        for (qpair, unqpair) in quant.subnets.iter_mut().zip(self.subnets.iter()) {
-            for (qsubnet, unqsubnet) in qpair.iter_mut().zip(unqpair.iter()) {
-                *qsubnet = unqsubnet.quantise(QA);
-            }
+        for (q, unq) in quant.subnets.iter_mut().zip(self.subnets.iter()) {
+            *q = unq.quantise(QA);
         }
+
+        quant.good_see_subnet = self.good_see_subnet.quantise(QA);
 
         quant.hce = self.hce;
 

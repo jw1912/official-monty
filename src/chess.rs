@@ -4,7 +4,7 @@ mod consts;
 mod frc;
 mod moves;
 
-use crate::{MctsParams, PolicyNetwork, ValueNetwork};
+use crate::{networks::Accumulator, MctsParams, PolicyNetwork, ValueNetwork};
 
 pub use self::{board::Board, frc::Castling, moves::Move};
 
@@ -140,19 +140,20 @@ impl ChessState {
         self.stm()
     }
 
-    pub fn get_policy_feats(&self) -> (Vec<usize>, u64) {
+    pub fn get_policy_feats(&self, policy: &PolicyNetwork) -> (Vec<usize>, Accumulator<i16, 16>) {
         let mut feats = Vec::with_capacity(32);
         self.board.map_policy_features(|feat| feats.push(feat));
-        (feats, self.board.threats())
+        let good_see = policy.good_see_subnet.out(&feats);
+        (feats, good_see)
     }
 
     pub fn get_policy(
         &self,
         mov: Move,
-        (feats, threats): &(Vec<usize>, u64),
+        (feats, good_see): &(Vec<usize>, Accumulator<i16, 16>),
         policy: &PolicyNetwork,
     ) -> f32 {
-        policy.get(&self.board, &mov, feats, *threats)
+        policy.get(&self.board, &mov, feats, good_see)
     }
 
     #[cfg(not(feature = "datagen"))]
@@ -189,7 +190,7 @@ impl ChessState {
     }
 
     pub fn display(&self, policy: &PolicyNetwork) {
-        let feats = self.get_policy_feats();
+        let feats = self.get_policy_feats(policy);
         let mut moves = Vec::new();
         let mut max = f32::NEG_INFINITY;
         self.map_legal_moves(|mov| {

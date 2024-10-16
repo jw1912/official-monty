@@ -24,7 +24,8 @@ impl SubNet {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct PolicyNetwork {
-    pub subnets: [[SubNet; 2]; 128],
+    pub subnets: [SubNet; 128],
+    pub good_see_subnet: SubNet,
     pub hce: layer::DenseConnected<activation::Identity, 4, 1>,
 }
 
@@ -47,17 +48,23 @@ impl PolicyNetwork {
         momentum: &mut Self,
         velocity: &mut Self,
     ) {
-        for (i, subnet_pair) in policy.subnets.iter_mut().enumerate() {
-            for (j, subnet) in subnet_pair.iter_mut().enumerate() {
-                subnet.adam(
-                    &grad.subnets[i][j],
-                    &mut momentum.subnets[i][j],
-                    &mut velocity.subnets[i][j],
-                    adj,
-                    lr,
-                );
-            }
+        for (i, subnet) in policy.subnets.iter_mut().enumerate() {
+            subnet.adam(
+                &grad.subnets[i],
+                &mut momentum.subnets[i],
+                &mut velocity.subnets[i],
+                adj,
+                lr,
+            );
         }
+
+        policy.good_see_subnet.adam(
+            &grad.good_see_subnet,
+            &mut momentum.good_see_subnet,
+            &mut velocity.good_see_subnet,
+            adj,
+            lr,
+        );
 
         policy
             .hce
@@ -76,22 +83,29 @@ impl PolicyNetwork {
         let mut max = -1000.0;
 
         let flip = board.flip_val();
-        let threats = board.threats();
+
+        let good_see_out = policy.good_see_subnet.out_with_layers(&feats);
 
         for &(mov, visits) in &pos.moves[..pos.num] {
             let mov = <Move as From<u16>>::from(mov);
 
             let from = usize::from(mov.src() ^ flip);
             let to = usize::from(mov.to() ^ flip) + 64;
-            let from_threat = usize::from(threats & (1 << mov.src()) > 0);
             let good_see = usize::from(board.see(&mov, -108));
 
-            let from_out = policy.subnets[from][from_threat].out_with_layers(&feats);
-            let to_out = policy.subnets[to][good_see].out_with_layers(&feats);
+            let from_out = policy.subnets[from].out_with_layers(&feats);
+            let to_out = policy.subnets[to].out_with_layers(&feats);
+
+            let to_output = if good_see > 0 {
+                to_out.output_layer() + good_see_out.output_layer()
+            } else {
+                to_out.output_layer()
+            };
+
             let hce_feats = PolicyNetwork::get_hce_feats(&board, &mov);
             let hce_out = policy.hce.out_with_layers(&hce_feats);
             let score =
-                from_out.output_layer().dot(&to_out.output_layer()) + hce_out.output_layer()[0];
+                from_out.output_layer().dot(&to_output) + hce_out.output_layer()[0];
 
             if score > max {
                 max = score;
@@ -109,7 +123,6 @@ impl PolicyNetwork {
         for (from_out, to_out, hce_out, mov, visits, score, good_see) in policies {
             let from = usize::from(mov.src() ^ flip);
             let to = usize::from(mov.to() ^ flip) + 64;
-            let from_threat = usize::from(threats & (1 << mov.src()) > 0);
             let hce_feats = PolicyNetwork::get_hce_feats(&board, &mov);
 
             let ratio = score / total;
@@ -121,19 +134,36 @@ impl PolicyNetwork {
 
             let factor = err;
 
-            policy.subnets[from][from_threat].backprop(
+            let to_output = if good_see > 0 {
+                to_out.output_layer() + good_see_out.output_layer()
+            } else {
+                to_out.output_layer()
+            };
+
+            policy.subnets[from].backprop(
                 &feats,
-                &mut grad.subnets[from][from_threat],
-                factor * to_out.output_layer(),
+                &mut grad.subnets[from],
+                factor * to_output,
                 &from_out,
             );
 
-            policy.subnets[to][good_see].backprop(
+            let from_grad = factor * from_out.output_layer();
+
+            policy.subnets[to].backprop(
                 &feats,
-                &mut grad.subnets[to][good_see],
-                factor * from_out.output_layer(),
+                &mut grad.subnets[to],
+                from_grad,
                 &to_out,
             );
+
+            if good_see > 0 {
+                policy.good_see_subnet.backprop(
+                    &feats,
+                    &mut grad.good_see_subnet,
+                    from_grad,
+                    &to_out,
+                );
+            }
 
             policy.hce.backprop(
                 &hce_feats,
@@ -148,21 +178,21 @@ impl PolicyNetwork {
         let mut policy = Self::boxed_and_zeroed();
 
         let mut rng = Rand::with_seed();
-        for subnet_pair in policy.subnets.iter_mut() {
-            for subnet in subnet_pair.iter_mut() {
-                *subnet = SubNet::from_fn(|| rng.rand_f32(0.2));
-            }
+        for subnet in policy.subnets.iter_mut() {
+            *subnet = SubNet::from_fn(|| rng.rand_f32(0.2));
         }
+
+        policy.good_see_subnet = SubNet::from_fn(|| rng.rand_f32(0.2));
 
         policy
     }
 
     pub fn add_without_explicit_lifetime(&mut self, rhs: &Self) {
-        for (ipair, jpair) in self.subnets.iter_mut().zip(rhs.subnets.iter()) {
-            for (i, j) in ipair.iter_mut().zip(jpair.iter()) {
-                *i += j;
-            }
+        for (i, j) in self.subnets.iter_mut().zip(rhs.subnets.iter()) {
+            *i += j;
         }
+
+        self.good_see_subnet += &rhs.good_see_subnet;
 
         self.hce += &rhs.hce;
     }
