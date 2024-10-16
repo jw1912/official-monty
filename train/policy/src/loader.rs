@@ -74,6 +74,8 @@ impl DataLoader {
                 }
             }
         }
+
+        std::mem::drop(buffer_receiver);
     }
 }
 

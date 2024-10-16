@@ -7,10 +7,10 @@ fn main() {
     policy::train(
         buffer_size_mb,
         threads,
-        "/home/neural/policy_data/interleaved.binpack".to_string(),
-        540,
+        "../binpacks/policygen8.binpack".to_string(),
+        40,
         0.001,
-        0.000001,
-        540,
+        0.00001,
+        40,
     );
 }
