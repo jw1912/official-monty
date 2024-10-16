@@ -9,7 +9,7 @@ const QA: i16 = 512;
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
-pub const PolicyFileDefaultName: &str = "nn-1ae77eae7e49.network";
+pub const PolicyFileDefaultName: &str = "nn-7b66fc18239a.network";
 
 #[repr(C)]
 #[derive(Clone, Copy)]
