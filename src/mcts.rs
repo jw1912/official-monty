@@ -104,11 +104,13 @@ impl<'a> Searcher<'a> {
             let mut pos = self.root_position.clone();
             let mut this_depth = 0;
 
-            if self.perform_one_iteration(
+            if let Some(u) = self.perform_one_iteration(
                 &mut pos,
                 self.tree.root_node(),
                 &mut this_depth,
-            ).is_none() {
+            ) {
+                self.tree[self.tree.root_node()].update(u);
+            } else {
                 return false;
             }
 
@@ -317,7 +319,7 @@ impl<'a> Searcher<'a> {
         let hash = pos.hash();
         let node = &self.tree[ptr];
 
-        let mut u = if node.is_terminal() || node.visits() == 0 {
+        let u = if node.is_terminal() || node.visits() == 0 {
             if node.visits() == 0 {
                 node.set_state(pos.game_state());
             }
@@ -361,21 +363,16 @@ impl<'a> Searcher<'a> {
 
             let u = maybe_u?;
 
+            let new_q = self.tree[child_ptr].update(u);
+            self.tree.push_hash(hash, new_q);
+
             self.tree
                 .propogate_proven_mates(ptr, self.tree[child_ptr].state());
 
             u
         };
 
-        // node scores are stored from the perspective
-        // **of the parent**, as they are usually only
-        // accessed from the parent's POV
-        u = 1.0 - u;
-
-        let new_q = node.update(u);
-        self.tree.push_hash(hash, 1.0 - new_q);
-
-        Some(u)
+        Some(1.0 - u)
     }
 
     fn get_utility(&self, ptr: NodePtr, pos: &ChessState) -> f32 {
