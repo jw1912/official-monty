@@ -145,9 +145,9 @@ make_mcts_params! {
     material_offset: i32 = 700, 400, 1200, 40, 0.002;
     material_div1: i32 = 32, 16, 64, 3, 0.002;
     material_div2: i32 = 1024, 512, 1536, 64, 0.002;
-    cross_entropy_scale: f32 = 3.0, 1.0, 10.0, 0.4, 0.002;
-    cross_entropy_weight: f32 = 0.25, 0.0, 1.0, 0.05, 0.002;
-    cross_entropy_offset: f32 = 0.25, 0.0, 1.0, 0.05, 0.002;
+    cross_entropy_scale: f32 = 2.0, 1.0, 10.0, 0.4, 0.002;
+    cross_entropy_weight: f32 = 0.5, 0.0, 1.0, 0.05, 0.002;
+    cross_entropy_offset: f32 = 0.5, 0.0, 1.0, 0.05, 0.002;
 
     tm_opt_value1: f64 = 0.686, 0.1, 1.2, 0.072, 0.002;
     tm_opt_value2: f64 = 0.392, 0.1, 1.0, 0.045, 0.002;
