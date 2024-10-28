@@ -40,8 +40,8 @@ impl SearchHelpers {
             }
 
             loss /= (node.visits() - 1) as f32;
-            let weight = 1.0 / (1.0 + (-loss / params.cross_entropy_scale()).exp());
-            cpuct *= 1.0 + params.cross_entropy_weight() * (weight - params.cross_entropy_offset());
+            let weight = 1.0 / (1.0 + (-(loss - params.cross_entropy_offset()) / params.cross_entropy_scale()).exp());
+            cpuct *= 1.0 + params.cross_entropy_weight() * weight;
         }
 
         cpuct
