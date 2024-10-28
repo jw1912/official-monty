@@ -11,23 +11,25 @@ impl SearchHelpers {
     /// CPUCT
     ///
     /// Larger value implies more exploration.
-    pub fn get_cpuct(params: &MctsParams, node: &Node, is_root: bool) -> f32 {
+    pub fn get_cpuct(searcher: &Searcher, node: &Node, is_root: bool) -> f32 {
         // baseline CPUCT value
         let mut cpuct = if is_root {
-            params.root_cpuct()
+            searcher.params.root_cpuct()
         } else {
-            params.cpuct()
+            searcher.params.cpuct()
         };
 
         // scale CPUCT as visits increase
-        let scale = params.cpuct_visits_scale() * 128.0;
+        let scale = searcher.params.cpuct_visits_scale() * 128.0;
         cpuct *= 1.0 + ((node.visits() as f32 + scale) / scale).ln();
 
         // scale CPUCT with variance of Q
         if node.visits() > 1 {
-            let frac = node.var().sqrt() / params.cpuct_var_scale();
-            cpuct *= 1.0 + params.cpuct_var_weight() * (frac - 1.0);
+            let frac = node.var().sqrt() / searcher.params.cpuct_var_scale();
+            cpuct *= 1.0 + searcher.params.cpuct_var_weight() * (frac - 1.0);
         }
+
+        cpuct *= Self::get_kurtosis(searcher, node).ln() / 2.0;
 
         cpuct
     }
@@ -74,6 +76,26 @@ impl SearchHelpers {
         } else {
             node.q()
         }
+    }
+
+    fn get_kurtosis(searcher: &Searcher, node: &Node) -> f32 {
+        let mu = 1.0 - node.q();
+
+        let mut moment4 = 0.0;
+        let mut moment2 = 0.0;
+
+        searcher.tree.for_each_child(node, |child| {
+            let q = child.q();
+            let v = child.visits() as f32;
+            moment4 += v * (q - mu).powi(4);
+            moment2 += v * (q - mu).powi(2);
+        });
+
+        let v = node.visits() as f32;
+        moment4 /= v;
+        moment2 /= v;
+
+        moment4 / moment2.powi(2)
     }
 
     /// Calculates the maximum allowed time usage for a search

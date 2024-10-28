@@ -370,6 +370,14 @@ impl Tree {
         NodePtr::NULL
     }
 
+    pub fn for_each_child<F: FnMut(&Node)>(&self, node: &Node, mut f: F) {
+        let first_child_ptr = { *node.actions() };
+
+        for action in 0..node.num_actions() {
+            f(&self[first_child_ptr + action]);
+        }
+    }
+
     pub fn get_best_child_by_key<F: FnMut(&Node) -> f32>(&self, ptr: NodePtr, mut key: F) -> usize {
         let mut best_child = usize::MAX;
         let mut best_score = f32::NEG_INFINITY;
