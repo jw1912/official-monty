@@ -29,7 +29,10 @@ impl SearchHelpers {
             cpuct *= 1.0 + searcher.params.cpuct_var_weight() * (frac - 1.0);
         }
 
-        cpuct *= Self::get_kurtosis(searcher, node).ln() / 2.0;
+        if node.visits() > 1 {
+            let kurtosis = Self::get_kurtosis(searcher, node);
+            cpuct *= 1.0 + (kurtosis.ln() - 0.5) / 8.0;
+        }
 
         cpuct
     }
@@ -94,6 +97,10 @@ impl SearchHelpers {
         let v = node.visits() as f32;
         moment4 /= v;
         moment2 /= v;
+
+        if moment2 == 0.0 {
+            return 1.0;
+        }
 
         moment4 / moment2.powi(2)
     }
