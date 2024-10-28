@@ -12,26 +12,27 @@ impl SearchHelpers {
     ///
     /// Larger value implies more exploration.
     pub fn get_cpuct(searcher: &Searcher, node: &Node, is_root: bool) -> f32 {
+        let params = &searcher.params;
+
         // baseline CPUCT value
         let mut cpuct = if is_root {
-            searcher.params.root_cpuct()
+            params.root_cpuct()
         } else {
-            searcher.params.cpuct()
+            params.cpuct()
         };
 
         // scale CPUCT as visits increase
-        let scale = searcher.params.cpuct_visits_scale() * 128.0;
+        let scale = params.cpuct_visits_scale() * 128.0;
         cpuct *= 1.0 + ((node.visits() as f32 + scale) / scale).ln();
 
-        // scale CPUCT with variance of Q
         if node.visits() > 1 {
-            let frac = node.var().sqrt() / searcher.params.cpuct_var_scale();
-            cpuct *= 1.0 + searcher.params.cpuct_var_weight() * (frac - 1.0);
-        }
+            // scale CPUCT with variance of Q
+            let frac = node.var().sqrt() / params.cpuct_var_scale();
+            cpuct *= 1.0 + params.cpuct_var_weight() * (frac - 1.0);
 
-        if node.visits() > 1 {
+            // scale CPUCT with Kurtosis of Q
             let kurtosis = Self::get_kurtosis(searcher, node);
-            cpuct *= 1.0 + (kurtosis.ln() - 0.5) / 8.0;
+            cpuct *= 1.0 - (kurtosis.ln() - params.kurtosis_offset()) * params.kurtosis_scale();
         }
 
         cpuct
