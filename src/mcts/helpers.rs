@@ -11,7 +11,9 @@ impl SearchHelpers {
     /// CPUCT
     ///
     /// Larger value implies more exploration.
-    pub fn get_cpuct(params: &MctsParams, node: &Node, is_root: bool) -> f32 {
+    pub fn get_cpuct(searcher: &Searcher, node: &Node, is_root: bool) -> f32 {
+        let params = &searcher.params;
+
         // baseline CPUCT value
         let mut cpuct = if is_root {
             params.root_cpuct()
@@ -23,10 +25,23 @@ impl SearchHelpers {
         let scale = params.cpuct_visits_scale() * 128.0;
         cpuct *= 1.0 + ((node.visits() as f32 + scale) / scale).ln();
 
-        // scale CPUCT with variance of Q
         if node.visits() > 1 {
+            // scale CPUCT with variance of Q
             let frac = node.var().sqrt() / params.cpuct_var_scale();
             cpuct *= 1.0 + params.cpuct_var_weight() * (frac - 1.0);
+
+            // scale CPUCT with cross-entropy loss from policy
+            let mut loss = 0.0;
+
+            let actions = { *node.actions() };
+            for action in 0..node.num_actions() {
+                let child = &searcher.tree[actions + action];
+                loss -= child.visits() as f32 * (child.policy().max(0.001)).ln();
+            }
+
+            loss /= (node.visits() - 1) as f32;
+            let weight = 1.0 / (1.0 + (-loss / params.cross_entropy_scale()).exp());
+            cpuct *= 1.0 + params.cross_entropy_weight() * (weight - params.cross_entropy_offset());
         }
 
         cpuct
