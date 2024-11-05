@@ -1,28 +1,14 @@
+mod arch;
 mod input;
 mod loader;
 
-use bullet::{
-    lr, optimiser, outputs, wdl, Activation, LocalSettings, Loss, TrainerBuilder, TrainingSchedule,
-    TrainingSteps,
-};
+use arch::make_trainer;
+use bullet::{lr, optimiser, wdl, LocalSettings, TrainingSchedule, TrainingSteps};
 
 const HIDDEN_SIZE: usize = 4096;
 
 fn main() {
-    let mut trainer = TrainerBuilder::default()
-        .optimiser(optimiser::AdamW)
-        .loss_fn(Loss::SigmoidMSE)
-        .single_perspective()
-        .input(input::ThreatInputs)
-        .output_buckets(outputs::Single)
-        .feature_transformer(HIDDEN_SIZE)
-        .activate(Activation::SCReLU)
-        .add_layer(16)
-        .activate(Activation::SCReLU)
-        .add_layer(128)
-        .activate(Activation::SCReLU)
-        .add_layer(1)
-        .build();
+    let mut trainer = make_trainer(HIDDEN_SIZE);
 
     let schedule = TrainingSchedule {
         net_id: "4096EXP".to_string(),
