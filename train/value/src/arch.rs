@@ -48,7 +48,7 @@ fn build_network(inputs: usize, l1: usize) -> (Graph, Node) {
 
     // inputs
     let stm = builder.create_input("stm", Shape::new(inputs, 1));
-    let targets = builder.create_input("targets", Shape::new(1, 1));
+    let targets = builder.create_input("targets", Shape::new(3, 1));
 
     // trainable weights
     let l0w = builder.create_weights("l0w", Shape::new(l1, inputs));
@@ -57,8 +57,8 @@ fn build_network(inputs: usize, l1: usize) -> (Graph, Node) {
     let l1b = builder.create_weights("l1b", Shape::new(16, 1));
     let l2w = builder.create_weights("l2w", Shape::new(128, 16));
     let l2b = builder.create_weights("l2b", Shape::new(128, 1));
-    let l3w = builder.create_weights("l3w", Shape::new(1, 128));
-    let l3b = builder.create_weights("l3b", Shape::new(1, 1));
+    let l3w = builder.create_weights("l3w", Shape::new(3, 128));
+    let l3b = builder.create_weights("l3b", Shape::new(3, 1));
 
     // inference
     let l1 = operations::affine(&mut builder, l0w, stm, l0b);
@@ -68,8 +68,7 @@ fn build_network(inputs: usize, l1: usize) -> (Graph, Node) {
     let l3 = operations::affine(&mut builder, l2w, l2, l2b);
     let l3 = operations::activate(&mut builder, l3, Activation::SCReLU);
     let predicted = operations::affine(&mut builder, l3w, l3, l3b);
-    let sigmoided = operations::activate(&mut builder, predicted, Activation::Sigmoid);
-    operations::mse(&mut builder, sigmoided, targets);
+    operations::softmax_crossentropy_loss(&mut builder, predicted, targets);
 
     // graph, output node
     (builder.build(ExecutionContext::default()), predicted)
