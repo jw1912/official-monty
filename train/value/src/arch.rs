@@ -39,6 +39,8 @@ pub fn make_trainer(l1: usize) -> Trainer<AdamWOptimiser, ThreatInputs, outputs:
             ("l2b".to_string(), QuantTarget::Float),
             ("l3w".to_string(), QuantTarget::Float),
             ("l3b".to_string(), QuantTarget::Float),
+            ("pstw".to_string(), QuantTarget::Float),
+            ("pstb".to_string(), QuantTarget::Float),
         ],
     )
 }
@@ -51,6 +53,8 @@ fn build_network(inputs: usize, l1: usize) -> (Graph, Node) {
     let targets = builder.create_input("targets", Shape::new(1, 1));
 
     // trainable weights
+    let pstw = builder.create_weights("pstw", Shape::new(1, inputs));
+    let pstb = builder.create_weights("pstb", Shape::new(1, 1));
     let l0w = builder.create_weights("l0w", Shape::new(l1, inputs));
     let l0b = builder.create_weights("l0b", Shape::new(l1, 1));
     let l1w = builder.create_weights("l1w", Shape::new(16, l1));
@@ -67,7 +71,11 @@ fn build_network(inputs: usize, l1: usize) -> (Graph, Node) {
     let l2 = operations::activate(&mut builder, l2, Activation::SCReLU);
     let l3 = operations::affine(&mut builder, l2w, l2, l2b);
     let l3 = operations::activate(&mut builder, l3, Activation::SCReLU);
-    let predicted = operations::affine(&mut builder, l3w, l3, l3b);
+    let l4 = operations::affine(&mut builder, l3w, l3, l3b);
+
+    let pst = operations::affine(&mut builder, pstw, stm, pstb);
+
+    let predicted = operations::add(&mut builder, l4, pst);
     let sigmoided = operations::activate(&mut builder, predicted, Activation::Sigmoid);
     operations::mse(&mut builder, sigmoided, targets);
 

@@ -20,7 +20,7 @@ dependencies = [
 [[package]]
 name = "bullet_lib"
 version = "1.0.0"
-source = "git+https://github.com/jw1912/bullet#9ef581226c0675dda3e9a8bdf3b4aa8939b6d9d1"
+source = "git+https://github.com/jw1912/bullet#30355efff717253b95f0c5847f7a624ec0754457"
 dependencies = [
  "bulletformat",
  "cc",
