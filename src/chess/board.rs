@@ -170,7 +170,7 @@ impl Board {
         }
     }
 
-    pub fn map_value_features<F: FnMut(usize)>(&self, mut f: F) {
+    pub fn map_value_features<F: FnMut(usize, usize)>(&self, mut f: F) {
         let flip = self.stm() == Side::BLACK;
         let hm = if self.king_index() % 8 > 3 { 7 } else { 0 };
 
@@ -195,34 +195,40 @@ impl Board {
 
             while our_bb > 0 {
                 pop_lsb!(sq, our_bb);
-                let mut feat = pc + usize::from(sq ^ hm);
+                let mut stm = pc + usize::from(sq ^ hm);
+                let mut ntm = 384 + pc + usize::from(sq ^ hm ^ 56);
 
                 let bit = 1 << sq;
                 if threats & bit > 0 {
-                    feat += 768;
+                    stm += 768;
+                    ntm += 768 * 2;
                 }
 
                 if defences & bit > 0 {
-                    feat += 768 * 2;
+                    stm += 768 * 2;
+                    ntm += 768;
                 }
 
-                f(feat);
+                f(stm, ntm);
             }
 
             while opp_bb > 0 {
                 pop_lsb!(sq, opp_bb);
-                let mut feat = 384 + pc + usize::from(sq ^ hm);
+                let mut stm = 384 + pc + usize::from(sq ^ hm);
+                let mut ntm = pc + usize::from(sq ^ hm ^ 56);
 
                 let bit = 1 << sq;
                 if threats & bit > 0 {
-                    feat += 768;
+                    stm += 768;
+                    ntm += 768 * 2;
                 }
 
                 if defences & bit > 0 {
-                    feat += 768 * 2;
+                    stm += 768 * 2;
+                    ntm += 768;
                 }
 
-                f(feat);
+                f(stm, ntm);
             }
         }
     }

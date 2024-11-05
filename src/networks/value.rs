@@ -18,7 +18,7 @@ const FACTOR: i16 = 32;
 #[repr(C)]
 pub struct ValueNetwork {
     l1: Layer<i16, { 768 * 4 }, 4096>,
-    l2: TransposedLayer<i16, 4096, 16>,
+    l2: TransposedLayer<i16, 8192, 16>,
     l3: Layer<f32, 16, 128>,
     l4: Layer<f32, 128, 1>,
 }
@@ -26,7 +26,7 @@ pub struct ValueNetwork {
 impl ValueNetwork {
     pub fn eval(&self, board: &Board) -> i32 {
         let l2 = self.l1.forward(board);
-        let l3 = self.l2.forward_from_i16::<SCReLU, QA, QB, FACTOR>(&l2);
+        let l3 = self.l2.forward_from_i16::<SCReLU, QA, QB, FACTOR>(&l2[0], &l2[1]);
         let l4 = self.l3.forward::<SCReLU>(&l3);
         let out = self.l4.forward::<SCReLU>(&l4);
 
@@ -37,7 +37,7 @@ impl ValueNetwork {
 #[repr(C)]
 pub struct UnquantisedValueNetwork {
     l1: Layer<f32, { 768 * 4 }, 4096>,
-    l2: Layer<f32, 4096, 16>,
+    l2: Layer<f32, 8192, 16>,
     l3: Layer<f32, 16, 128>,
     l4: Layer<f32, 128, 1>,
 }
