@@ -72,11 +72,10 @@ impl Tree {
         // another thread is already doing the same work)
         self[to].copy_from(&self[from]);
         
-
         // this node already points into this half,
         // which is only possible if it is pointing
         // to a now deleted node!
-        if clear_ptr && t.half() == self.half.load(Ordering::Relaxed) {
+        if clear_ptr && f.half() == self.half.load(Ordering::Relaxed) {
             self[to].set_num_actions(0);
             *t = NodePtr::NULL;
         } else {
