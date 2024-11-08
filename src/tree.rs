@@ -57,7 +57,7 @@ impl Tree {
         self.tree[self.half()].reserve_nodes(1)
     }
 
-    fn copy_node_across(&self, from: NodePtr, to: NodePtr) -> Option<()> {
+    fn copy_node_across(&self, from: NodePtr, to: NodePtr, clear_ptr: bool) -> Option<()> {
         if from == to {
             return Some(());
         }
@@ -71,32 +71,43 @@ impl Tree {
         // (for a thread that calls this function whilst
         // another thread is already doing the same work)
         self[to].copy_from(&self[from]);
-        self[to].set_num_actions(self[from].num_actions());
-        *t = *f;
+        
+
+        // this node already points into this half,
+        // which is only possible if it is pointing
+        // to a now deleted node!
+        if clear_ptr && t.half() == self.half.load(Ordering::Relaxed) {
+            self[to].set_num_actions(0);
+            *t = NodePtr::NULL;
+        } else {
+            self[to].set_num_actions(self[from].num_actions());
+            *t = *f;
+        }
+
+        
 
         Some(())
     }
 
-    pub fn copy_across(&self, from: NodePtr, num: usize, to: NodePtr) -> Option<()> {
+    fn copy_across(&self, from: NodePtr, num: usize, to: NodePtr) -> Option<()> {
         for i in 0..num {
-            self.copy_node_across(from + i, to + i)?;
+            self.copy_node_across(from + i, to + i, true)?;
         }
 
         Some(())
     }
 
-    pub fn flip(&self, copy_across: bool, threads: usize) {
+    pub fn flip(&self, copy_across: bool) {
         let old_root_ptr = self.root_node();
 
         let old = usize::from(self.half.fetch_xor(true, Ordering::Relaxed));
-        self.tree[old].clear_ptrs(threads);
         self.tree[old ^ 1].clear();
 
         if copy_across {
             let new_root_ptr = self.tree[self.half()].reserve_nodes(1).unwrap();
             self[new_root_ptr].clear();
 
-            self.copy_node_across(old_root_ptr, new_root_ptr);
+            self.copy_node_across(old_root_ptr, new_root_ptr, true);
         }
     }
 
@@ -312,7 +323,7 @@ impl Tree {
 
                 if root != self.root_node() {
                     self[self.root_node()].clear();
-                    self.copy_node_across(root, self.root_node());
+                    self.copy_node_across(root, self.root_node(), false);
                     println!("info string found subtree");
                 } else {
                     println!("info string using current tree");
