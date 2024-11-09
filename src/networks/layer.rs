@@ -66,6 +66,19 @@ impl<const M: usize, const N: usize> Layer<f32, M, N> {
 
         dest.biases = self.biases.quantise_i16(qa, warn_limit);
     }
+
+    pub fn transpose_into(
+        &self,
+        dest: &mut TransposedLayer<f32, M, N>,
+    ) {
+        for i in 0..N {
+            for (j, row) in self.weights.iter().enumerate() {
+                dest.weights[i].0[j] = row.0[i];
+            }
+        }
+
+        dest.biases = self.biases;
+    }
 }
 
 #[repr(C)]

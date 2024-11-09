@@ -4,52 +4,54 @@ use crate::{
 };
 
 use super::{
-    accumulator::Accumulator,
-    layer::{Layer, TransposedLayer},
+    accumulator::Accumulator, activation::SCReLU, layer::{Layer, TransposedLayer}
 };
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
-pub const PolicyFileDefaultName: &str = "nn-5e45d73042ed.network";
+pub const PolicyFileDefaultName: &str = "nn-3031ab470125.network";
 
 const QA: i16 = 256;
 const QB: i16 = 512;
 const FACTOR: i16 = 32;
 
 const L1: usize = 4096;
+const L2: usize = 1024;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct PolicyNetwork {
     l1: Layer<i16, { 768 * 4 }, L1>,
-    l2: TransposedLayer<i16, L1, { 1880 * 2 }>,
+    l2: TransposedLayer<i16, L1, L2>,
+    l3: TransposedLayer<f32, L2, { 1880 * 2 }>,
 }
 
 impl PolicyNetwork {
-    pub fn hl(&self, pos: &Board) -> Accumulator<i16, L1> {
-        let mut res = self.l1.biases;
+    pub fn hl(&self, pos: &Board) -> Accumulator<f32, L2> {
+        let mut l1 = self.l1.biases;
 
-        pos.map_policy_features(|feat| res.add(&self.l1.weights[feat]));
+        pos.map_policy_features(|feat| l1.add(&self.l1.weights[feat]));
 
-        for elem in &mut res.0 {
-            *elem =
-                (i32::from(*elem).clamp(0, i32::from(QA)).pow(2) / i32::from(QA / FACTOR)) as i16;
+        let mut hl = self.l2.forward_from_i16::<SCReLU, QA, QB, FACTOR>(&l1);
+
+        for elem in &mut hl.0 {
+            *elem = (*elem).clamp(0.0, 1.0).powi(2);
+        }
+
+        hl
+    }
+
+    pub fn get(&self, pos: &Board, mov: &Move, hl: &Accumulator<f32, L2>) -> f32 {
+        let idx = map_move_to_index(pos, *mov);
+        let weights = &self.l3.weights[idx];
+
+        let mut res = self.l3.biases.0[idx];
+
+        for (&w, &v) in weights.0.iter().zip(hl.0.iter()) {
+            res += w * v;
         }
 
         res
-    }
-
-    pub fn get(&self, pos: &Board, mov: &Move, hl: &Accumulator<i16, L1>) -> f32 {
-        let idx = map_move_to_index(pos, *mov);
-        let weights = &self.l2.weights[idx];
-
-        let mut res = 0;
-
-        for (&w, &v) in weights.0.iter().zip(hl.0.iter()) {
-            res += i32::from(w) * i32::from(v);
-        }
-
-        (res as f32 / f32::from(QA * FACTOR) + f32::from(self.l2.biases.0[idx])) / f32::from(QB)
     }
 }
 
@@ -97,7 +99,8 @@ const OFFSETS: [usize; 65] = {
 #[repr(C)]
 pub struct UnquantisedPolicyNetwork {
     l1: Layer<f32, { 768 * 4 }, L1>,
-    l2: Layer<f32, L1, { 1880 * 2 }>,
+    l2: Layer<f32, L1, L2>,
+    l3: Layer<f32, L2, { 1880 * 2 }>,
 }
 
 impl UnquantisedPolicyNetwork {
@@ -107,6 +110,7 @@ impl UnquantisedPolicyNetwork {
         self.l1.quantise_into_i16(&mut quantised.l1, QA, 1.98);
         self.l2
             .quantise_transpose_into_i16(&mut quantised.l2, QB, 1.98);
+        self.l3.transpose_into(&mut quantised.l3);
 
         quantised
     }
