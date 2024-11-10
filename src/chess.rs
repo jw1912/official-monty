@@ -4,7 +4,7 @@ mod consts;
 mod frc;
 mod moves;
 
-use crate::{networks::Accumulator, MctsParams, PolicyNetwork, ValueNetwork};
+use crate::{networks::Accumulator, MctsParams, PolicyNetwork, ValueNetwork, POLICY_L1};
 
 pub use self::{attacks::Attacks, board::Board, frc::Castling, moves::Move};
 
@@ -140,14 +140,14 @@ impl ChessState {
         self.stm()
     }
 
-    pub fn get_policy_feats(&self, policy: &PolicyNetwork) -> Accumulator<i16, 4096> {
+    pub fn get_policy_feats(&self, policy: &PolicyNetwork) -> Accumulator<i16, { POLICY_L1 / 2 }> {
         policy.hl(&self.board)
     }
 
     pub fn get_policy(
         &self,
         mov: Move,
-        hl: &Accumulator<i16, 4096>,
+        hl: &Accumulator<i16, { POLICY_L1 / 2 }>,
         policy: &PolicyNetwork,
     ) -> f32 {
         policy.get(&self.board, &mov, hl)

@@ -9,7 +9,7 @@ pub use mcts::{Limits, MctsParams, Searcher};
 use memmap2::Mmap;
 pub use networks::{
     PolicyFileDefaultName, PolicyNetwork, UnquantisedPolicyNetwork, UnquantisedValueNetwork,
-    ValueFileDefaultName, ValueNetwork,
+    ValueFileDefaultName, ValueNetwork, POLICY_L1,
 };
 pub use tree::Tree;
 pub use uci::Uci;

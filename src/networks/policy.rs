@@ -16,7 +16,7 @@ const QA: i16 = 256;
 const QB: i16 = 512;
 const FACTOR: i16 = 32;
 
-const L1: usize = 4096;
+pub const L1: usize = 4096;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -33,7 +33,11 @@ impl PolicyNetwork {
 
         let mut res = Accumulator([0; L1 / 2]);
 
-        for (elem, (&i, &j)) in res.0.iter_mut().zip(l1.0.iter().take(L1 / 2).zip(l1.0.iter().skip(L1 / 2))) {
+        for (elem, (&i, &j)) in res
+            .0
+            .iter_mut()
+            .zip(l1.0.iter().take(L1 / 2).zip(l1.0.iter().skip(L1 / 2)))
+        {
             let i = i32::from(i).clamp(0, i32::from(QA));
             let j = i32::from(j).clamp(0, i32::from(QA));
             *elem = ((i * j) / i32::from(QA / FACTOR)) as i16;
@@ -42,7 +46,7 @@ impl PolicyNetwork {
         res
     }
 
-    pub fn get(&self, pos: &Board, mov: &Move, hl: &Accumulator<i16, L1>) -> f32 {
+    pub fn get(&self, pos: &Board, mov: &Move, hl: &Accumulator<i16, { L1 / 2 }>) -> f32 {
         let idx = map_move_to_index(pos, *mov);
         let weights = &self.l2.weights[idx];
 
