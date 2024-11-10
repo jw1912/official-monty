@@ -29,7 +29,7 @@ impl PolicyNetwork {
     pub fn hl(&self, pos: &Board) -> Accumulator<i16, L1> {
         let mut res = self.l1.biases;
 
-        pos.map_policy_features(|feat| res.add(&self.l1.weights[feat]));
+        pos.map_value_features(|feat| res.add(&self.l1.weights[feat]));
 
         for elem in &mut res.0 {
             *elem =
@@ -56,18 +56,19 @@ impl PolicyNetwork {
 const PROMOS: usize = 4 * 22;
 
 fn map_move_to_index(pos: &Board, mov: Move) -> usize {
+    let hm = if pos.king_index() % 8 > 3 { 7 } else { 0 };
     let good_see = (OFFSETS[64] + PROMOS) * usize::from(pos.see(&mov, -108));
 
     let idx = if mov.is_promo() {
-        let ffile = mov.src() % 8;
-        let tfile = mov.to() % 8;
+        let ffile = (mov.src() ^ hm) % 8;
+        let tfile = (mov.to() ^ hm) % 8;
         let promo_id = 2 * ffile + tfile;
 
         OFFSETS[64] + 22 * (mov.promo_pc() - 3) + usize::from(promo_id)
     } else {
         let flip = if pos.stm() == 1 { 56 } else { 0 };
-        let from = usize::from(mov.src() ^ flip);
-        let dest = usize::from(mov.to() ^ flip);
+        let from = usize::from(mov.src() ^ flip ^ hm);
+        let dest = usize::from(mov.to() ^ flip ^ hm);
 
         let below = Attacks::ALL_DESTINATIONS[from] & ((1 << dest) - 1);
 
