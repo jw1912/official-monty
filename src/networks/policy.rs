@@ -22,18 +22,21 @@ const L1: usize = 4096;
 #[derive(Clone, Copy)]
 pub struct PolicyNetwork {
     l1: Layer<i16, { 768 * 4 }, L1>,
-    l2: TransposedLayer<i16, L1, { 1880 * 2 }>,
+    l2: TransposedLayer<i16, { L1 / 2 }, { 1880 * 2 }>,
 }
 
 impl PolicyNetwork {
-    pub fn hl(&self, pos: &Board) -> Accumulator<i16, L1> {
-        let mut res = self.l1.biases;
+    pub fn hl(&self, pos: &Board) -> Accumulator<i16, { L1 / 2 }> {
+        let mut l1 = self.l1.biases;
 
-        pos.map_policy_features(|feat| res.add(&self.l1.weights[feat]));
+        pos.map_policy_features(|feat| l1.add(&self.l1.weights[feat]));
 
-        for elem in &mut res.0 {
-            *elem =
-                (i32::from(*elem).clamp(0, i32::from(QA)).pow(2) / i32::from(QA / FACTOR)) as i16;
+        let mut res = Accumulator([0; L1 / 2]);
+
+        for (elem, (&i, &j)) in res.0.iter_mut().zip(l1.0.iter().take(L1 / 2).zip(l1.0.iter().skip(L1 / 2))) {
+            let i = i32::from(i).clamp(0, i32::from(QA));
+            let j = i32::from(j).clamp(0, i32::from(QA));
+            *elem = ((i * j) / i32::from(QA / FACTOR)) as i16;
         }
 
         res
@@ -97,7 +100,7 @@ const OFFSETS: [usize; 65] = {
 #[repr(C)]
 pub struct UnquantisedPolicyNetwork {
     l1: Layer<f32, { 768 * 4 }, L1>,
-    l2: Layer<f32, L1, { 1880 * 2 }>,
+    l2: Layer<f32, { L1 / 2 }, { 1880 * 2 }>,
 }
 
 impl UnquantisedPolicyNetwork {
