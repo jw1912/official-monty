@@ -4,7 +4,7 @@ mod consts;
 mod frc;
 mod moves;
 
-use crate::{networks::Accumulator, MctsParams, PolicyNetwork, ValueNetwork};
+use crate::{networks::Accumulator, PolicyNetwork, ValueNetwork};
 
 pub use self::{attacks::Attacks, board::Board, frc::Castling, moves::Move};
 
@@ -153,38 +153,9 @@ impl ChessState {
         policy.get(&self.board, &mov, hl)
     }
 
-    #[cfg(not(feature = "datagen"))]
-    fn piece_count(&self, piece: usize) -> i32 {
-        self.board.piece(piece).count_ones() as i32
-    }
-
-    pub fn get_value(&self, value: &ValueNetwork, _params: &MctsParams) -> i32 {
-        const K: f32 = 400.0;
+    pub fn get_value_wdl(&self, value: &ValueNetwork) -> f32 {
         let (win, draw, _) = value.eval(&self.board);
-
-        let score = win + draw / 2.0;
-        let cp = (-K * (1.0 / score.clamp(0.0, 1.0) - 1.0).ln()) as i32;
-
-        #[cfg(not(feature = "datagen"))]
-        {
-            use consts::Piece;
-
-            let mut mat = self.piece_count(Piece::KNIGHT) * _params.knight_value()
-                + self.piece_count(Piece::BISHOP) * _params.bishop_value()
-                + self.piece_count(Piece::ROOK) * _params.rook_value()
-                + self.piece_count(Piece::QUEEN) * _params.queen_value();
-
-            mat = _params.material_offset() + mat / _params.material_div1();
-
-            cp * mat / _params.material_div2()
-        }
-
-        #[cfg(feature = "datagen")]
-        cp
-    }
-
-    pub fn get_value_wdl(&self, value: &ValueNetwork, params: &MctsParams) -> f32 {
-        1.0 / (1.0 + (-(self.get_value(value, params) as f32) / 400.0).exp())
+        win + draw / 2.0
     }
 
     pub fn perft(&self, depth: usize) -> u64 {

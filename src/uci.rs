@@ -95,8 +95,10 @@ impl Uci {
                 "perft" => run_perft(&commands, &pos),
                 "quit" => std::process::exit(0),
                 "eval" => {
-                    println!("cp: {}", pos.get_value(value, &params));
-                    println!("wdl: {:.2}%", 100.0 * pos.get_value_wdl(value, &params));
+                    let score = pos.get_value_wdl(value);
+                    let cp = (-400.0 * (1.0 / score.clamp(0.0, 1.0) - 1.0).ln()) as i32;
+                    println!("cp: {cp:.0}");
+                    println!("wdl: {:.2}%", 100.0 * score);
                 }
                 "policy" => {
                     let f = pos.get_policy_feats(policy);
