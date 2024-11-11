@@ -140,10 +140,6 @@ make_mcts_params! {
     cpuct_var_scale: f32 = 0.257, 0.0, 2.0, 0.02, 0.002;
     cpuct_visits_scale: f32 = 37.3, 1.0, 512.0, 3.2, 0.002;
     expl_tau: f32 = 0.623, 0.1, 1.0, 0.05, 0.002;
-    knight_value: i32 = 450, 250, 750, 25, 0.002;
-    bishop_value: i32 = 450, 250, 750, 25, 0.002;
-    rook_value: i32 = 650, 400, 1000, 30, 0.002;
-    queen_value: i32 = 1250, 900, 1600, 35, 0.002;
     material_offset: i32 = 700, 400, 1200, 40, 0.002;
     material_div1: i32 = 32, 16, 64, 3, 0.002;
     material_div2: i32 = 1024, 512, 1536, 64, 0.002;
