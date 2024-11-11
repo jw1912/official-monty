@@ -140,17 +140,25 @@ impl ChessState {
         self.stm()
     }
 
-    pub fn get_policy_feats(&self, policy: &PolicyNetwork) -> Accumulator<i16, 4096> {
-        policy.hl(&self.board)
+    pub fn get_policy_feats(&self, policy: &PolicyNetwork) -> (Accumulator<i16, 4096>, [usize; 32], usize) {
+        let mut feats = [0; 32];
+        let mut count = 0;
+
+        self.board.map_policy_features(|feat| {
+            feats[count] = feat;
+            count += 1;
+        });
+
+        (policy.hl(&feats[..count]), feats, count)
     }
 
     pub fn get_policy(
         &self,
         mov: Move,
-        hl: &Accumulator<i16, 4096>,
+        (hl, feats, count): &(Accumulator<i16, 4096>, [usize; 32], usize),
         policy: &PolicyNetwork,
     ) -> f32 {
-        policy.get(&self.board, &mov, hl)
+        policy.get(&self.board, &mov, hl, &feats[..*count])
     }
 
     #[cfg(not(feature = "datagen"))]

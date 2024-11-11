@@ -10,7 +10,7 @@ use super::{
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
-pub const PolicyFileDefaultName: &str = "nn-5e45d73042ed.network";
+pub const PolicyFileDefaultName: &str = "nn-7aaec1bd6412.network";
 
 const QA: i16 = 256;
 const QB: i16 = 512;
@@ -23,13 +23,16 @@ const L1: usize = 4096;
 pub struct PolicyNetwork {
     l1: Layer<i16, { 768 * 4 }, L1>,
     l2: TransposedLayer<i16, L1, { 1880 * 2 }>,
+    pst: Layer<i16, { 768 * 4 }, { 1880 * 2 }>,
 }
 
 impl PolicyNetwork {
-    pub fn hl(&self, pos: &Board) -> Accumulator<i16, L1> {
+    pub fn hl(&self, feats: &[usize]) -> Accumulator<i16, L1> {
         let mut res = self.l1.biases;
 
-        pos.map_policy_features(|feat| res.add(&self.l1.weights[feat]));
+        for &feat in feats {
+            res.add(&self.l1.weights[feat]);
+        }
 
         for elem in &mut res.0 {
             *elem =
@@ -39,7 +42,7 @@ impl PolicyNetwork {
         res
     }
 
-    pub fn get(&self, pos: &Board, mov: &Move, hl: &Accumulator<i16, L1>) -> f32 {
+    pub fn get(&self, pos: &Board, mov: &Move, hl: &Accumulator<i16, L1>, feats: &[usize]) -> f32 {
         let idx = map_move_to_index(pos, *mov);
         let weights = &self.l2.weights[idx];
 
@@ -49,7 +52,15 @@ impl PolicyNetwork {
             res += i32::from(w) * i32::from(v);
         }
 
-        (res as f32 / f32::from(QA * FACTOR) + f32::from(self.l2.biases.0[idx])) / f32::from(QB)
+        let net = (res as f32 / f32::from(QA * FACTOR) + f32::from(self.l2.biases.0[idx])) / f32::from(QB);
+
+        let mut pst = self.pst.biases.0[idx];
+
+        for &feat in feats {
+            pst += self.pst.weights[feat].0[idx];
+        }
+
+        net + (pst as f32) / f32::from(QA)
     }
 }
 
@@ -98,6 +109,7 @@ const OFFSETS: [usize; 65] = {
 pub struct UnquantisedPolicyNetwork {
     l1: Layer<f32, { 768 * 4 }, L1>,
     l2: Layer<f32, L1, { 1880 * 2 }>,
+    pst: Layer<f32, { 768 * 4 }, { 1880 * 2 }>,
 }
 
 impl UnquantisedPolicyNetwork {
@@ -107,6 +119,7 @@ impl UnquantisedPolicyNetwork {
         self.l1.quantise_into_i16(&mut quantised.l1, QA, 1.98);
         self.l2
             .quantise_transpose_into_i16(&mut quantised.l2, QB, 1.98);
+        self.pst.quantise_into_i16(&mut quantised.pst, QA, 1.98);
 
         quantised
     }
