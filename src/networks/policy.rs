@@ -23,6 +23,10 @@ const L1: usize = 4096;
 pub struct PolicyNetwork {
     l1: Layer<i16, { 768 * 4 }, L1>,
     l2: TransposedLayer<i16, L1, { 1880 * 2 }>,
+    v2: TransposedLayer<i16, L1, 16>,
+    v3: Layer<f32, 16, 128>,
+    v4: Layer<f32, 128, 3>,
+    pst: Layer<f32, { 768 * 4 }, 3>,
 }
 
 impl PolicyNetwork {
@@ -98,6 +102,10 @@ const OFFSETS: [usize; 65] = {
 pub struct UnquantisedPolicyNetwork {
     l1: Layer<f32, { 768 * 4 }, L1>,
     l2: Layer<f32, L1, { 1880 * 2 }>,
+    v2: Layer<f32, L1, 16>,
+    v3: Layer<f32, 16, 128>,
+    v4: Layer<f32, 128, 3>,
+    pst: Layer<f32, { 768 * 4 }, 3>,
 }
 
 impl UnquantisedPolicyNetwork {
@@ -107,6 +115,13 @@ impl UnquantisedPolicyNetwork {
         self.l1.quantise_into_i16(&mut quantised.l1, QA, 1.98);
         self.l2
             .quantise_transpose_into_i16(&mut quantised.l2, QB, 1.98);
+
+        self.v2
+            .quantise_transpose_into_i16(&mut quantised.v2, QB, 1.98);
+    
+        quantised.v3 = self.v3;
+        quantised.v4 = self.v4;
+        quantised.pst = self.pst;
 
         quantised
     }
