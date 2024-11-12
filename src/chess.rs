@@ -153,38 +153,27 @@ impl ChessState {
         policy.get(&self.board, &mov, hl)
     }
 
-    #[cfg(not(feature = "datagen"))]
-    fn piece_count(&self, piece: usize) -> i32 {
-        self.board.piece(piece).count_ones() as i32
-    }
-
-    pub fn get_value(&self, value: &ValueNetwork, _params: &MctsParams) -> i32 {
-        const K: f32 = 400.0;
-        let (win, draw, _) = value.eval(&self.board);
-
-        let score = win + draw / 2.0;
-        let cp = (-K * (1.0 / score.clamp(0.0, 1.0) - 1.0).ln()) as i32;
-
+    pub fn get_value_wdl(&self, value: &ValueNetwork, _params: &MctsParams) -> f32 {
         #[cfg(not(feature = "datagen"))]
-        {
+        let temperature = {
             use consts::Piece;
 
-            let mut mat = self.piece_count(Piece::KNIGHT) * _params.knight_value()
-                + self.piece_count(Piece::BISHOP) * _params.bishop_value()
-                + self.piece_count(Piece::ROOK) * _params.rook_value()
-                + self.piece_count(Piece::QUEEN) * _params.queen_value();
+            let piece_count = |pc| self.board.piece(pc).count_ones() as f32;
 
-            mat = _params.material_offset() + mat / _params.material_div1();
+            let mat = piece_count(Piece::KNIGHT) * _params.knight_value()
+                + piece_count(Piece::BISHOP) * _params.bishop_value()
+                + piece_count(Piece::ROOK) * _params.rook_value()
+                + piece_count(Piece::QUEEN) * _params.queen_value();
 
-            cp * mat / _params.material_div2()
-        }
+            _params.material_offset() + mat * _params.material_factor()
+        };
 
         #[cfg(feature = "datagen")]
-        cp
-    }
+        let temperature = 1.0;
 
-    pub fn get_value_wdl(&self, value: &ValueNetwork, params: &MctsParams) -> f32 {
-        1.0 / (1.0 + (-(self.get_value(value, params) as f32) / 400.0).exp())
+        let (win, draw, _) = value.eval(&self.board, temperature);
+
+        ((win + draw / 2.0) * 4096.0).round() / 4096.0
     }
 
     pub fn perft(&self, depth: usize) -> u64 {

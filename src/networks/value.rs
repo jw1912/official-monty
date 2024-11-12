@@ -23,7 +23,7 @@ pub struct ValueNetwork {
 }
 
 impl ValueNetwork {
-    pub fn eval(&self, board: &Board) -> (f32, f32, f32) {
+    pub fn eval(&self, board: &Board, temperature: f32) -> (f32, f32, f32) {
         let mut pst = self.pst.biases;
 
         let mut count = 0;
@@ -49,9 +49,9 @@ impl ValueNetwork {
 
         let max = win.max(draw).max(loss);
 
-        win = (win - max).exp();
-        draw = (draw - max).exp();
-        loss = (loss - max).exp();
+        win = ((win - max) / temperature).exp();
+        draw = ((draw - max) / temperature).exp();
+        loss = ((loss - max) / temperature).exp();
 
         let sum = win + draw + loss;
 
