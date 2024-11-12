@@ -173,7 +173,7 @@ impl ChessState {
 
         let (win, draw, _) = value.eval(&self.board, temperature);
 
-        ((win + draw / 2.0) * 4096.0).round() / 4096.0
+        ((win + draw / 2.0) * 2048.0).trunc() / 2048.0
     }
 
     pub fn perft(&self, depth: usize) -> u64 {
