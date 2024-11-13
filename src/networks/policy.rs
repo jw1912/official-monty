@@ -10,10 +10,11 @@ use super::{
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
-pub const PolicyFileDefaultName: &str = "nn-4e8503c1025f.network";
+pub const PolicyFileDefaultName: &str = "nn-864dfe4e553b.network";
 
 const QA: i16 = 256;
-const QB: i16 = 512;
+const QBP: i8 = 64;
+const QBV: i16 = 512;
 const FACTOR: i16 = 32;
 
 const L1: usize = 4096;
@@ -22,7 +23,7 @@ const L1: usize = 4096;
 #[derive(Clone, Copy)]
 pub struct PolicyNetwork {
     l1: Layer<i16, { 768 * 4 }, L1>,
-    l2: TransposedLayer<i16, L1, { 1880 * 2 }>,
+    l2: TransposedLayer<i8, L1, { 1880 * 2 }>,
     v2: TransposedLayer<i16, L1, 16>,
     v3: Layer<f32, 16, 128>,
     v4: Layer<f32, 128, 3>,
@@ -53,7 +54,7 @@ impl PolicyNetwork {
             res += i32::from(w) * i32::from(v);
         }
 
-        (res as f32 / f32::from(QA * FACTOR) + f32::from(self.l2.biases.0[idx])) / f32::from(QB)
+        (res as f32 / f32::from(QA * FACTOR) + f32::from(self.l2.biases.0[idx])) / f32::from(QBP)
     }
 }
 
@@ -114,10 +115,10 @@ impl UnquantisedPolicyNetwork {
 
         self.l1.quantise_into_i16(&mut quantised.l1, QA, 1.98);
         self.l2
-            .quantise_transpose_into_i16(&mut quantised.l2, QB, 1.98);
+            .quantise_transpose_into_i8(&mut quantised.l2, QBP, 1.98);
 
         self.v2
-            .quantise_transpose_into_i16(&mut quantised.v2, QB, 1.98);
+            .quantise_transpose_into_i16(&mut quantised.v2, QBV, 1.98);
     
         quantised.v3 = self.v3;
         quantised.v4 = self.v4;
