@@ -16,6 +16,12 @@ use std::{
     time::Instant,
 };
 
+static HASH_HITS: AtomicUsize = AtomicUsize::new(0);
+
+pub fn get_hash_hits_count() -> usize {
+    HASH_HITS.load(Ordering::Relaxed)
+}
+
 #[derive(Clone, Copy)]
 pub struct Limits {
     pub max_time: Option<u128>,
@@ -327,6 +333,7 @@ impl<'a> Searcher<'a> {
             // probe hash table to use in place of network
             if node.state() == GameState::Ongoing {
                 if let Some(entry) = self.tree.probe_hash(hash) {
+                    HASH_HITS.fetch_add(1, Ordering::Relaxed);
                     entry.q()
                 } else {
                     self.get_utility(ptr, pos)

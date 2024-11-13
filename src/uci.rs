@@ -1,8 +1,5 @@
 use crate::{
-    chess::{ChessState, Move, get_value_call_count},
-    mcts::{Limits, SearchHelpers, Searcher},
-    MctsParams, PolicyNetwork, Tree, ValueNetwork,
-    tree::{get_policy_call_count},
+    chess::{get_value_call_count, ChessState, Move}, mcts::{get_hash_hits_count, Limits, SearchHelpers, Searcher}, tree::get_policy_call_count, MctsParams, PolicyNetwork, Tree, ValueNetwork
 };
 
 use std::{
@@ -138,6 +135,7 @@ pub fn bench(depth: usize, policy: &PolicyNetwork, value: &ValueNetwork, params:
 
     let initial_policy_count = get_policy_call_count();
     let initial_value_count = get_value_call_count();
+    let initial_hash_hits = get_hash_hits_count();
 
     let bench_fens = [
         "r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14",
@@ -218,16 +216,19 @@ pub fn bench(depth: usize, policy: &PolicyNetwork, value: &ValueNetwork, params:
 
     let final_policy_count = get_policy_call_count();
     let final_value_count = get_value_call_count();
+    let final_hash_hits = get_hash_hits_count();
 
     let total_policy_calls = final_policy_count - initial_policy_count;
     let total_value_calls = final_value_count - initial_value_count;
+    let total_hash_hits = final_hash_hits - initial_hash_hits;
+
+    println!(
+        "policy calls: {total_policy_calls}, value calls: {total_value_calls}, hash hits: {total_hash_hits}"
+    );
 
     println!(
         "Bench: {total_nodes} nodes {:.0} nps",
         total_nodes as f32 / time
-    );
-    println!(
-        "Total get_policy calls: {total_policy_calls}, Total get_value calls: {total_value_calls}"
     );
 }
 
