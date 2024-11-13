@@ -1,7 +1,8 @@
 use crate::{
-    chess::{ChessState, Move},
+    chess::{ChessState, Move, get_value_call_count},
     mcts::{Limits, SearchHelpers, Searcher},
     MctsParams, PolicyNetwork, Tree, ValueNetwork,
+    tree::{get_policy_call_count},
 };
 
 use std::{
@@ -135,6 +136,9 @@ pub fn bench(depth: usize, policy: &PolicyNetwork, value: &ValueNetwork, params:
     let mut total_nodes = 0;
     let mut time = 0.0;
 
+    let initial_policy_count = get_policy_call_count();
+    let initial_value_count = get_value_call_count();
+
     let bench_fens = [
         "r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14",
         "4rrk1/2p1b1p1/p1p3q1/4p3/2P2n1p/1P1NR2P/PB3PP1/3R1QK1 b - - 2 24",
@@ -212,9 +216,18 @@ pub fn bench(depth: usize, policy: &PolicyNetwork, value: &ValueNetwork, params:
         tree.clear(1);
     }
 
+    let final_policy_count = get_policy_call_count();
+    let final_value_count = get_value_call_count();
+
+    let total_policy_calls = final_policy_count - initial_policy_count;
+    let total_value_calls = final_value_count - initial_value_count;
+
     println!(
         "Bench: {total_nodes} nodes {:.0} nps",
         total_nodes as f32 / time
+    );
+    println!(
+        "Total get_policy calls: {total_policy_calls}, Total get_value calls: {total_value_calls}"
     );
 }
 

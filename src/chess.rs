@@ -8,6 +8,10 @@ use crate::{networks::Accumulator, MctsParams, PolicyNetwork, ValueNetwork};
 
 pub use self::{attacks::Attacks, board::Board, frc::Castling, moves::Move};
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+static GET_VALUE_CALL_COUNT: AtomicUsize = AtomicUsize::new(0);
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum GameState {
     #[default]
@@ -138,6 +142,9 @@ impl ChessState {
     }
 
     pub fn get_value(&self, value: &ValueNetwork, _params: &MctsParams) -> i32 {
+
+        GET_VALUE_CALL_COUNT.fetch_add(1, Ordering::Relaxed);
+
         const K: f32 = 400.0;
         let (win, draw, _) = value.eval(&self.board);
 
@@ -271,4 +278,8 @@ fn perft<const ROOT: bool, const BULK: bool>(pos: &Board, depth: u8, castling: &
     }
 
     count
+}
+
+pub fn get_value_call_count() -> usize {
+    GET_VALUE_CALL_COUNT.load(Ordering::Relaxed)
 }

@@ -7,9 +7,11 @@ use hash::{HashEntry, HashTable};
 pub use node::{Node, NodePtr};
 
 use std::{
-    sync::atomic::{AtomicBool, Ordering},
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
     time::Instant,
 };
+
+static GET_POLICY_CALL_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 use crate::{chess::ChessState, mcts::SearchHelpers, GameState, MctsParams, PolicyNetwork};
 
@@ -172,6 +174,8 @@ impl Tree {
         let feats = pos.get_policy_feats(policy);
         let mut max = f32::NEG_INFINITY;
         let mut actions = Vec::new();
+
+        GET_POLICY_CALL_COUNT.fetch_add(1, Ordering::Relaxed);
 
         pos.map_legal_moves(|mov| {
             let policy = pos.get_policy(mov, &feats, policy);
@@ -402,4 +406,8 @@ impl Tree {
             }
         })
     }
+}
+
+pub fn get_policy_call_count() -> usize {
+    GET_POLICY_CALL_COUNT.load(Ordering::Relaxed)
 }
