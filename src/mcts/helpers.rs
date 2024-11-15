@@ -166,7 +166,7 @@ impl SearchHelpers {
         .clamp(searcher.params.tm_bmi2(), searcher.params.tm_bmi3());
 
         // Use less time if our best move has a large percentage of visits, and vice versa
-        let (best_child_ptr, _, _) = searcher.get_best_action(searcher.tree.root_node());
+        let (best_child_ptr, _, _) = searcher.get_best_action(searcher.tree.root_node()).unwrap();
         let nodes_effort = searcher.tree[best_child_ptr].visits() as f32 / nodes as f32;
         let best_move_visits = (searcher.params.tm_bmv1()
             - ((nodes_effort + searcher.params.tm_bmv2()) * searcher.params.tm_bmv3()).ln_1p()

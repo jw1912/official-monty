@@ -63,36 +63,6 @@ impl TreeHalf {
         self.used.store(0, Ordering::Relaxed);
     }
 
-    pub fn clear_ptrs(&self, threads: usize) {
-        if threads == 1 {
-            Self::clear_ptrs_single_threaded(self.half, &self.nodes);
-        } else {
-            self.clear_ptrs_multi_threaded(threads);
-        }
-    }
-
-    fn clear_ptrs_single_threaded(half: bool, nodes: &[Node]) {
-        for node in nodes {
-            let actions_half = { node.actions().half() };
-
-            if actions_half != half {
-                node.clear_actions();
-            }
-        }
-    }
-
-    fn clear_ptrs_multi_threaded(&self, threads: usize) {
-        std::thread::scope(|s| {
-            let chunk_size = (self.nodes.len() + threads - 1) / threads;
-
-            s.spawn(move || {
-                for node_chunk in self.nodes.chunks(chunk_size) {
-                    Self::clear_ptrs_single_threaded(self.half, node_chunk)
-                }
-            });
-        });
-    }
-
     pub fn is_empty(&self) -> bool {
         self.used.load(Ordering::Relaxed) == 0
     }

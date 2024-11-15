@@ -57,7 +57,7 @@ impl Tree {
         self.tree[self.half()].reserve_nodes(1)
     }
 
-    fn copy_node_across(&self, from: NodePtr, to: NodePtr) -> Option<()> {
+    fn copy_node_across(&self, from: NodePtr, to: NodePtr, clear_ptr: bool) -> Option<()> {
         if from == to {
             return Some(());
         }
@@ -71,32 +71,40 @@ impl Tree {
         // (for a thread that calls this function whilst
         // another thread is already doing the same work)
         self[to].copy_from(&self[from]);
-        self[to].set_num_actions(self[from].num_actions());
-        *t = *f;
+
+        // this node already points into this half,
+        // which is only possible if it is pointing
+        // to a now deleted node!
+        if clear_ptr && f.half() == self.half.load(Ordering::Relaxed) {
+            self[to].set_num_actions(0);
+            *t = NodePtr::NULL;
+        } else {
+            self[to].set_num_actions(self[from].num_actions());
+            *t = *f;
+        }
 
         Some(())
     }
 
     pub fn copy_across(&self, from: NodePtr, num: usize, to: NodePtr) -> Option<()> {
         for i in 0..num {
-            self.copy_node_across(from + i, to + i)?;
+            self.copy_node_across(from + i, to + i, true)?;
         }
 
         Some(())
     }
 
-    pub fn flip(&self, copy_across: bool, threads: usize) {
+    pub fn flip(&self, copy_across: bool) {
         let old_root_ptr = self.root_node();
 
         let old = usize::from(self.half.fetch_xor(true, Ordering::Relaxed));
-        self.tree[old].clear_ptrs(threads);
         self.tree[old ^ 1].clear();
 
         if copy_across {
             let new_root_ptr = self.tree[self.half()].reserve_nodes(1).unwrap();
             self[new_root_ptr].clear();
 
-            self.copy_node_across(old_root_ptr, new_root_ptr);
+            self.copy_node_across(old_root_ptr, new_root_ptr, true);
         }
     }
 
@@ -227,7 +235,7 @@ impl Tree {
 
         let mut policies = Vec::new();
 
-        let actions = self[node_ptr].actions_mut();
+        let actions = self[node_ptr].actions();
         let num_actions = self[node_ptr].num_actions();
 
         for action in 0..num_actions {
@@ -269,10 +277,10 @@ impl Tree {
 
                 let mut proven_loss = true;
                 let mut max_win_len = n;
-                let first_child_ptr = *self[ptr].actions();
+                let first_child_ptr = self[ptr].actions();
 
                 for action in 0..self[ptr].num_actions() {
-                    let ptr = first_child_ptr + action;
+                    let ptr = *first_child_ptr + action;
 
                     if let GameState::Won(n) = self[ptr].state() {
                         max_win_len = n.max(max_win_len);
@@ -312,7 +320,7 @@ impl Tree {
 
                 if root != self.root_node() {
                     self[self.root_node()].clear();
-                    self.copy_node_across(root, self.root_node());
+                    self.copy_node_across(root, self.root_node(), false);
                     println!("info string found subtree");
                 } else {
                     println!("info string using current tree");
@@ -346,7 +354,7 @@ impl Tree {
             return NodePtr::NULL;
         }
 
-        let first_child_ptr = { *self[start].actions() };
+        let first_child_ptr = self[start].actions();
 
         if first_child_ptr.is_null() {
             return NodePtr::NULL;
@@ -355,7 +363,7 @@ impl Tree {
         for action in 0..self[start].num_actions() {
             let mut child_board = this_board.clone();
 
-            let child_ptr = first_child_ptr + action;
+            let child_ptr = *first_child_ptr + action;
             let child = &self[child_ptr];
 
             child_board.make_move(child.parent_move());
@@ -374,10 +382,10 @@ impl Tree {
         let mut best_child = usize::MAX;
         let mut best_score = f32::NEG_INFINITY;
 
-        let first_child_ptr = { *self[ptr].actions() };
+        let first_child_ptr = self[ptr].actions();
 
         for action in 0..self[ptr].num_actions() {
-            let score = key(&self[first_child_ptr + action]);
+            let score = key(&self[*first_child_ptr + action]);
 
             if score > best_score {
                 best_score = score;

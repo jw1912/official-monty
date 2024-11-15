@@ -159,7 +159,7 @@ impl<'a> Searcher<'a> {
                 }
             }
 
-            let (_, new_best_move, _) = self.get_best_action(self.tree.root_node());
+            let (_, new_best_move, _) = self.get_best_action(self.tree.root_node()).unwrap();
             if new_best_move != *best_move {
                 *best_move = new_best_move;
                 *best_move_changes += 1;
@@ -246,10 +246,10 @@ impl<'a> Searcher<'a> {
             self.tree
                 .relabel_policy(node, &self.root_position, self.params, self.policy, 1);
 
-            let first_child_ptr = { *self.tree[node].actions() };
+            let first_child_ptr = self.tree[node].actions();
 
             for action in 0..self.tree[node].num_actions() {
-                let ptr = first_child_ptr + action;
+                let ptr = *first_child_ptr + action;
 
                 if ptr.is_null() || !self.tree[ptr].has_children() {
                     continue;
@@ -290,7 +290,7 @@ impl<'a> Searcher<'a> {
             });
 
             if !self.abort.load(Ordering::Relaxed) {
-                self.tree.flip(true, threads);
+                self.tree.flip(true);
             }
         }
 
@@ -304,7 +304,7 @@ impl<'a> Searcher<'a> {
             );
         }
 
-        let (_, mov, q) = self.get_best_action(self.tree.root_node());
+        let (_, mov, q) = self.get_best_action(self.tree.root_node()).unwrap();
         (mov, q)
     }
 
@@ -348,6 +348,8 @@ impl<'a> Searcher<'a> {
             // select action to take via PUCT
             let action = self.pick_action(ptr, node);
 
+            // this pointer can never be outdated as the node is
+            // guaranteed to be in the active half
             let first_child_ptr = { *node.actions() };
             let child_ptr = first_child_ptr + action;
 
@@ -455,7 +457,7 @@ impl<'a> Searcher<'a> {
     fn get_pv(&self, mut depth: usize) -> (Vec<Move>, f32) {
         let mate = self.tree[self.tree.root_node()].is_terminal();
 
-        let (mut ptr, mut mov, q) = self.get_best_action(self.tree.root_node());
+        let (mut ptr, mut mov, q) = self.get_best_action(self.tree.root_node()).unwrap();
 
         let score = if !ptr.is_null() {
             match self.tree[ptr].state() {
@@ -473,24 +475,28 @@ impl<'a> Searcher<'a> {
 
         while (mate || depth > 0) && !ptr.is_null() && ptr.half() == half {
             pv.push(mov);
-            let idx = self.tree.get_best_child(ptr);
-
-            if idx == usize::MAX {
+            if let Some((this_ptr, this_mov, _)) = self.get_best_action(ptr) {
+                ptr = this_ptr;
+                mov = this_mov;
+                depth = depth.saturating_sub(1);
+            } else {
                 break;
             }
-
-            (ptr, mov, _) = self.get_best_action(ptr);
-            depth = depth.saturating_sub(1);
         }
 
         (pv, score)
     }
 
-    fn get_best_action(&self, node: NodePtr) -> (NodePtr, Move, f32) {
+    fn get_best_action(&self, node: NodePtr) -> Option<(NodePtr, Move, f32)> {
         let idx = self.tree.get_best_child(node);
+
+        if idx == usize::MAX {
+            return None;
+        }
+
         let ptr = *self.tree[node].actions() + idx;
         let child = &self.tree[ptr];
-        (ptr, child.parent_move(), child.q())
+        Some((ptr, child.parent_move(), child.q()))
     }
 
     fn get_cp(score: f32) -> f32 {
@@ -498,9 +504,9 @@ impl<'a> Searcher<'a> {
     }
 
     pub fn display_moves(&self) {
-        let first_child_ptr = { *self.tree[self.tree.root_node()].actions() };
+        let first_child_ptr = self.tree[self.tree.root_node()].actions();
         for action in 0..self.tree[self.tree.root_node()].num_actions() {
-            let child = &self.tree[first_child_ptr + action];
+            let child = &self.tree[*first_child_ptr + action];
             let mov = self.root_position.conv_mov_to_str(child.parent_move());
             let q = child.q() * 100.0;
             println!(
