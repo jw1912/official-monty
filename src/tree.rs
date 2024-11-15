@@ -105,6 +105,7 @@ impl Tree {
             self[new_root_ptr].clear();
 
             self.copy_node_across(old_root_ptr, new_root_ptr, true);
+            self.fetch_children(new_root_ptr).unwrap();
         }
     }
 
