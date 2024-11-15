@@ -290,7 +290,7 @@ impl<'a> Searcher<'a> {
             });
 
             if !self.abort.load(Ordering::Relaxed) {
-                self.tree.flip(true);
+                self.tree.flip();
             }
         }
 

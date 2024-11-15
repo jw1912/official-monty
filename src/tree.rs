@@ -94,19 +94,17 @@ impl Tree {
         Some(())
     }
 
-    pub fn flip(&self, copy_across: bool) {
+    pub fn flip(&self) {
         let old_root_ptr = self.root_node();
 
         let old = usize::from(self.half.fetch_xor(true, Ordering::Relaxed));
         self.tree[old ^ 1].clear();
 
-        if copy_across {
-            let new_root_ptr = self.tree[self.half()].reserve_nodes(1).unwrap();
-            self[new_root_ptr].clear();
+        let new_root_ptr = self.tree[self.half()].reserve_nodes(1).unwrap();
+        self[new_root_ptr].clear();
 
-            self.copy_node_across(old_root_ptr, new_root_ptr, true);
-            self.fetch_children(new_root_ptr).unwrap();
-        }
+        self.copy_node_across(old_root_ptr, new_root_ptr, true);
+        self.fetch_children(new_root_ptr).unwrap();
     }
 
     #[must_use]
