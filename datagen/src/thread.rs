@@ -89,7 +89,6 @@ impl<'a> DatagenThread<'a> {
             max_depth: 12,
             max_nodes: node_limit,
             max_time: None,
-            opt_time: None,
         };
 
         let mut result = 0.5;

@@ -19,7 +19,6 @@ use std::{
 #[derive(Clone, Copy)]
 pub struct Limits {
     pub max_time: Option<u128>,
-    pub opt_time: Option<u128>,
     pub max_depth: usize,
     pub max_nodes: usize,
 }
@@ -66,9 +65,6 @@ impl<'a> Searcher<'a> {
         limits: &Limits,
         timer: &Instant,
         search_stats: &SearchStats,
-        best_move: &mut Move,
-        best_move_changes: &mut i32,
-        previous_score: &mut f32,
         #[cfg(not(feature = "uci-minimal"))] uci_output: bool,
     ) {
         if self.playout_until_full_internal(search_stats, true, || {
@@ -76,9 +72,6 @@ impl<'a> Searcher<'a> {
                 limits,
                 timer,
                 search_stats,
-                best_move,
-                best_move_changes,
-                previous_score,
                 #[cfg(not(feature = "uci-minimal"))]
                 uci_output,
             )
@@ -141,9 +134,6 @@ impl<'a> Searcher<'a> {
         limits: &Limits,
         timer: &Instant,
         search_stats: &SearchStats,
-        best_move: &mut Move,
-        best_move_changes: &mut i32,
-        previous_score: &mut f32,
         #[cfg(not(feature = "uci-minimal"))] uci_output: bool,
     ) -> bool {
         let iters = search_stats.main_iters.load(Ordering::Relaxed);
@@ -157,39 +147,6 @@ impl<'a> Searcher<'a> {
                 if timer.elapsed().as_millis() >= time {
                     return true;
                 }
-            }
-
-            let (_, new_best_move, _) = self.get_best_action(self.tree.root_node());
-            if new_best_move != *best_move {
-                *best_move = new_best_move;
-                *best_move_changes += 1;
-            }
-        }
-
-        if iters % 4096 == 0 {
-            if let Some(time) = limits.opt_time {
-                let (should_stop, score) = SearchHelpers::soft_time_cutoff(
-                    self,
-                    timer,
-                    *previous_score,
-                    *best_move_changes,
-                    iters,
-                    time,
-                );
-
-                if should_stop {
-                    return true;
-                }
-
-                if iters % 16384 == 0 {
-                    *best_move_changes = 0;
-                }
-
-                *previous_score = if *previous_score == f32::NEG_INFINITY {
-                    score
-                } else {
-                    (score + 2.0 * *previous_score) / 3.0
-                };
             }
         }
 
@@ -264,10 +221,6 @@ impl<'a> Searcher<'a> {
 
         let search_stats = SearchStats::default();
 
-        let mut best_move = Move::NULL;
-        let mut best_move_changes = 0;
-        let mut previous_score = f32::NEG_INFINITY;
-
         // search loop
         while !self.abort.load(Ordering::Relaxed) {
             thread::scope(|s| {
@@ -276,9 +229,6 @@ impl<'a> Searcher<'a> {
                         &limits,
                         &timer,
                         &search_stats,
-                        &mut best_move,
-                        &mut best_move_changes,
-                        &mut previous_score,
                         #[cfg(not(feature = "uci-minimal"))]
                         uci_output,
                     );
