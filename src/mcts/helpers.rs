@@ -92,7 +92,7 @@ impl SearchHelpers {
         increment: Option<u64>,
         movestogo: Option<u64>,
     ) -> u128 {
-        let base = time / movestogo.unwrap_or(30).max(1);
+        let base = time / movestogo.unwrap_or(25).max(1);
         let inc = increment.unwrap_or(0) * 3 / 4;
         u128::from(base + inc)
     }
