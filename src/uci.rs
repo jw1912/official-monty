@@ -13,7 +13,6 @@ use std::{
 pub fn run(policy: &PolicyNetwork, value: &ValueNetwork) {
     let mut prev = None;
     let mut pos = ChessState::default();
-    let mut root_game_ply = 0;
     let mut params = MctsParams::default();
     let mut tree = Tree::new_mb(64, 1);
     let mut report_moves = false;
@@ -53,15 +52,11 @@ pub fn run(policy: &PolicyNetwork, value: &ValueNetwork) {
             ),
             "position" => position(commands, &mut pos),
             "go" => {
-                // increment game ply every time `go` is called
-                root_game_ply += 2;
-
                 go(
                     &commands,
                     &mut tree,
                     prev,
                     &pos,
-                    root_game_ply,
                     &params,
                     report_moves,
                     policy,
@@ -123,7 +118,6 @@ pub fn run(policy: &PolicyNetwork, value: &ValueNetwork) {
             "uci" => preamble(),
             "ucinewgame" => {
                 prev = None;
-                root_game_ply = 0;
                 tree.clear(threads);
             }
             _ => {}
@@ -314,7 +308,6 @@ fn go(
     tree: &mut Tree,
     prev: Option<ChessState>,
     pos: &ChessState,
-    root_game_ply: u32,
     params: &MctsParams,
     report_moves: bool,
     policy: &PolicyNetwork,
@@ -363,7 +356,7 @@ fn go(
     // `go wtime <wtime> btime <btime> winc <winc> binc <binc>``
     if let Some(remaining) = times[pos.stm()] {
         let timeman =
-            SearchHelpers::get_time(remaining, incs[pos.stm()], root_game_ply, movestogo, params);
+            SearchHelpers::get_time(remaining, incs[pos.stm()], movestogo, params);
 
         opt_time = Some(timeman.0);
         max_time = Some(timeman.1);

@@ -60,35 +60,6 @@ impl Param<f32> {
     }
 }
 
-impl Param<f64> {
-    fn set(&mut self, val: i32) {
-        let actual = val as f64 / 1000.0;
-        self.val = actual.clamp(self.min, self.max);
-    }
-
-    fn info(&self, name: &str) {
-        println!(
-            "option name {} type spin default {:.0} min {:.0} max {:.0}",
-            name,
-            self.val * 1000.0,
-            self.min * 1000.0,
-            self.max * 1000.0,
-        );
-    }
-
-    fn list(&self, name: &str, step: f64, r: f64) {
-        println!(
-            "{}, {}, {}, {}, {}, {}",
-            name,
-            self.val * 1000.0,
-            self.min * 1000.0,
-            self.max * 1000.0,
-            step * 1000.0,
-            r,
-        );
-    }
-}
-
 macro_rules! make_mcts_params {
     ($($name:ident: $t:ty = $val:expr, $min:expr, $max:expr, $step:expr, $r:expr;)*) => {
         #[derive(Clone)]
@@ -147,21 +118,6 @@ make_mcts_params! {
     material_offset: i32 = 700, 400, 1200, 40, 0.002;
     material_div1: i32 = 32, 16, 64, 3, 0.002;
     material_div2: i32 = 1024, 512, 1536, 64, 0.002;
-    tm_opt_value1: f64 = 0.686, 0.1, 1.2, 0.072, 0.002;
-    tm_opt_value2: f64 = 0.392, 0.1, 1.0, 0.045, 0.002;
-    tm_opt_value3: f64 = 0.822, 0.1, 1.2, 0.08, 0.002;
-    tm_optscale_value1: f64 = 1.271, 0.1, 2.0, 0.15, 0.002;
-    tm_optscale_value2: f64 = 2.510, 0.1, 5.0, 0.3, 0.002;
-    tm_optscale_value3: f64 = 0.499, 0.1, 1.0, 0.05, 0.002;
-    tm_optscale_value4: f64 = 0.240, 0.1, 1.0, 0.025, 0.002;
-    tm_max_value1: f64 = 3.072, 1.0, 10.0, 0.4, 0.002;
-    tm_max_value2: f64 = 2.928, 1.0, 10.0, 0.4, 0.002;
-    tm_max_value3: f64 = 2.843, 1.0, 10.0, 0.4, 0.002;
-    tm_maxscale_value1: f64 = 11.357, 1.0, 24.0, 1.2, 0.002;
-    tm_maxscale_value2: f64 = 3.691, 1.0, 12.0, 0.6, 0.002;
-    tm_bonus_ply: f64 = 10.72, 1.0, 30.0, 1.5, 0.002;
-    tm_bonus_value1: f64 = 0.488, 0.1, 2.0, 0.05, 0.002;
-    tm_max_time: f64 = 0.837, 0.400, 0.990, 0.085, 0.002;
     tm_mtg: i32 = 30, 10, 60, 3, 0.002;
     tm_falling_eval1: f32 = 0.055, 0.0, 0.2, 0.007, 0.002;
     tm_falling_eval2: f32 = 0.648, 0.1, 1.0, 0.06, 0.002;

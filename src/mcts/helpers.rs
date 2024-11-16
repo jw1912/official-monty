@@ -92,7 +92,6 @@ impl SearchHelpers {
     pub fn get_time(
         time: u64,
         increment: Option<u64>,
-        ply: u32,
         movestogo: Option<u64>,
         params: &MctsParams,
     ) -> (u128, u128) {
@@ -105,35 +104,9 @@ impl SearchHelpers {
             let inc = increment.unwrap_or(0);
             let mtg = params.tm_mtg() as u64;
 
-            let time_left = (time + inc * (mtg - 1) - 10 * (2 + mtg)).max(1) as f64;
-            let log_time = (time_left / 1000.0).log10();
+            let max_time = (time / mtg + 3 * inc / 4).min(9 * time / 10);
 
-            let opt_constant = (params.tm_opt_value1() / 100.0
-                + params.tm_opt_value2() / 1000.0 * log_time)
-                .min(params.tm_opt_value3() / 100.0);
-            let opt_scale = (params.tm_optscale_value1() / 100.0
-                + (ply as f64 + params.tm_optscale_value2()).powf(params.tm_optscale_value3())
-                    * opt_constant)
-                .min(params.tm_optscale_value4() * time as f64 / time_left);
-
-            let max_constant = (params.tm_max_value1() + params.tm_max_value2() * log_time)
-                .max(params.tm_max_value3());
-            let max_scale = (max_constant + ply as f64 / params.tm_maxscale_value1())
-                .min(params.tm_maxscale_value2());
-
-            // More time at the start of the game
-            let bonus_ply = params.tm_bonus_ply();
-            let bonus = if ply < bonus_ply as u32 {
-                1.0 + (bonus_ply - ply as f64).log10() * params.tm_bonus_value1()
-            } else {
-                1.0
-            };
-
-            let opt_time = (opt_scale * bonus * time_left) as u128;
-            let max_time =
-                (max_scale * opt_time as f64).min(time as f64 * params.tm_max_time()) as u128;
-
-            (opt_time, max_time)
+            (u128::from(3 * max_time / 5), u128::from(max_time))
         }
     }
 
