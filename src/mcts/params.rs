@@ -118,7 +118,7 @@ make_mcts_params! {
     material_offset: i32 = 700, 400, 1200, 40, 0.002;
     material_div1: i32 = 32, 16, 64, 3, 0.002;
     material_div2: i32 = 1024, 512, 1536, 64, 0.002;
-    tm_mtg: i32 = 30, 10, 60, 3, 0.002;
+    tm_mtg: i32 = 20, 10, 60, 3, 0.002;
     tm_falling_eval1: f32 = 0.055, 0.0, 0.2, 0.007, 0.002;
     tm_falling_eval2: f32 = 0.648, 0.1, 1.0, 0.06, 0.002;
     tm_falling_eval3: f32 = 1.644, 0.1, 3.0, 0.18, 0.002;

@@ -106,7 +106,7 @@ impl SearchHelpers {
 
             let max_time = (time / mtg + 3 * inc / 4).min(9 * time / 10);
 
-            (u128::from(3 * max_time / 5), u128::from(max_time))
+            (u128::from(4 * max_time / 5), u128::from(max_time))
         }
     }
 
