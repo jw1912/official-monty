@@ -58,6 +58,12 @@ impl<const N: usize> Accumulator<i16, N> {
 }
 
 impl<const N: usize> Accumulator<f32, N> {
+    pub fn relu(&mut self) {
+        for i in self.0.iter_mut() {
+            *i = (*i).max(0.0);
+        }
+    }
+
     pub fn add_multi(&mut self, adds: &[usize], weights: &[Self]) {
         const REGS: usize = 8;
         const PER: usize = REGS * 16;

@@ -1,7 +1,9 @@
 mod accumulator;
 mod activation;
+mod conv;
 mod layer;
 mod policy;
+mod residual;
 mod value;
 
 pub use accumulator::Accumulator;
