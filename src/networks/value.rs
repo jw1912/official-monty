@@ -1,7 +1,7 @@
-use crate::Board;
+use crate::{networks::activation::Identity, Board};
 
 use super::{
-    activation::ReLU, conv::ConvLayer, layer::Layer, residual::ResidualBlock
+    conv::ConvLayer, layer::Layer, residual::ResidualBlock
 };
 
 // DO NOT MOVE
@@ -35,18 +35,18 @@ impl ValueNetwork {
 
         l2.add_multi(&feats[..count], &self.l1.weights);
 
+        l2.relu();
+
         for block in &self.res_tower {
             l2 = block.forward(&l2);
         }
 
-        //l2.relu();
         let l3 = self.l2.forward(&l2);
-        let out = self.l3.forward::<ReLU>(&l3);
+        let out = self.l3.forward::<Identity>(&l3);
 
         let mut win = out.0[2];
         let mut draw = out.0[1];
         let mut loss = out.0[0];
-        println!("{}", loss * 400.0);
 
         let max = win.max(draw).max(loss);
 

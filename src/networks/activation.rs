@@ -17,3 +17,11 @@ impl Activation for SCReLU {
         x.clamp(0.0, 1.0).powi(2)
     }
 }
+
+pub struct Identity;
+impl Activation for Identity {
+    #[inline]
+    fn activate(x: f32) -> f32 {
+        x
+    }
+}
