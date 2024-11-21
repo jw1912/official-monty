@@ -92,18 +92,16 @@ impl ConvLayer {
 
                 for x in 0..OUTPUT_DIM {
                     for y in 0..OUTPUT_DIM {
-                        let mut elem = 0.0;
+                        let base_idx = INPUT_SIZE * j + INPUT_DIM * x + y;
 
+                        let mut elem = 0.0;
                         for a in 0..KERNEL_DIM {
                             for b in 0..KERNEL_DIM {
-                                let ia = x + a;
-                                let ib = y + b;
-
-                                elem += kernel.0[a][b] * input.0[64 * j + 8 * ia + ib];
+                                elem += kernel.0[a][b] * input.0[base_idx + INPUT_DIM * a + b];
                             }
                         }
 
-                        out.0[OUTPUT_SIZE * i + 4 * x + y] += elem;
+                        out.0[OUTPUT_SIZE * i + OUTPUT_DIM * x + y] += elem;
                     }
                 }
             }
