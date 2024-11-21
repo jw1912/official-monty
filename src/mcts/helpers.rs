@@ -32,28 +32,11 @@ impl SearchHelpers {
         cpuct
     }
 
-    /// Base Exploration Scaling
-    ///
-    /// Larger value implies more exploration.
-    fn base_explore_scaling(params: &MctsParams, node: &Node) -> f32 {
-        (params.expl_tau() * (node.visits().max(1) as f32).ln()).exp()
-    }
-
     /// Exploration Scaling
     ///
     /// Larger value implies more exploration.
     pub fn get_explore_scaling(params: &MctsParams, node: &Node) -> f32 {
-        #[cfg(not(feature = "datagen"))]
-        {
-            let mut scale = Self::base_explore_scaling(params, node);
-
-            let gini = node.gini_impurity();
-            scale *= (0.679 - 1.634 * (gini + 0.001).ln()).min(2.1);
-            scale
-        }
-
-        #[cfg(feature = "datagen")]
-        Self::base_explore_scaling(params, node)
+        (params.expl_tau() * (node.visits().max(1) as f32).ln()).exp()
     }
 
     /// Common depth PST

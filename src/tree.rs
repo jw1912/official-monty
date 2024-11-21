@@ -195,18 +195,12 @@ impl Tree {
             total += *policy;
         }
 
-        let mut sum_of_squares = 0.0;
-
         for (action, &(mov, policy)) in actions.iter().enumerate() {
             let ptr = new_ptr + action;
             let policy = policy / total;
 
             self[ptr].set_new(mov, policy);
-            sum_of_squares += policy * policy;
         }
-
-        let gini_impurity = (1.0 - sum_of_squares).clamp(0.0, 1.0);
-        node.set_gini_impurity(gini_impurity);
 
         *actions_ptr = new_ptr;
         node.set_num_actions(actions.len());

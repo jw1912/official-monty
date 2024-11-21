@@ -58,7 +58,6 @@ pub struct Node {
     visits: AtomicI32,
     q: AtomicU32,
     sq_q: AtomicU32,
-    gini_impurity: AtomicU32,
 }
 
 impl Node {
@@ -73,7 +72,6 @@ impl Node {
             visits: AtomicI32::new(0),
             q: AtomicU32::new(0),
             sq_q: AtomicU32::new(0),
-            gini_impurity: AtomicU32::new(0),
         }
     }
 
@@ -160,15 +158,6 @@ impl Node {
         self.state() == GameState::Ongoing && self.num_actions() == 0
     }
 
-    pub fn gini_impurity(&self) -> f32 {
-        f32::from_bits(self.gini_impurity.load(Ordering::Relaxed))
-    }
-
-    pub fn set_gini_impurity(&self, gini_impurity: f32) {
-        self.gini_impurity
-            .store(f32::to_bits(gini_impurity), Ordering::Relaxed);
-    }
-
     pub fn clear_actions(&self) {
         *self.actions.write().unwrap() = NodePtr::NULL;
         self.num_actions.store(0, Ordering::Relaxed);
@@ -185,8 +174,6 @@ impl Node {
         self.mov.store(other.mov.load(Relaxed), Relaxed);
         self.policy.store(other.policy.load(Relaxed), Relaxed);
         self.state.store(other.state.load(Relaxed), Relaxed);
-        self.gini_impurity
-            .store(other.gini_impurity.load(Relaxed), Relaxed);
         self.visits.store(other.visits.load(Relaxed), Relaxed);
         self.q.store(other.q.load(Relaxed), Relaxed);
         self.sq_q.store(other.sq_q.load(Relaxed), Relaxed);
@@ -195,7 +182,6 @@ impl Node {
     pub fn clear(&self) {
         self.clear_actions();
         self.set_state(GameState::Ongoing);
-        self.set_gini_impurity(0.0);
         self.visits.store(0, Ordering::Relaxed);
         self.q.store(0, Ordering::Relaxed);
         self.sq_q.store(0, Ordering::Relaxed);
