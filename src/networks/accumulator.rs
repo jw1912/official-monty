@@ -58,9 +58,9 @@ impl<const N: usize> Accumulator<i16, N> {
 }
 
 impl<const N: usize> Accumulator<f32, N> {
-    pub fn relu(&mut self) {
+    pub fn screlu(&mut self) {
         for i in self.0.iter_mut() {
-            *i = (*i).max(0.0);
+            *i = (*i).clamp(0.0, 1.0).powi(2);
         }
     }
 

@@ -1,32 +1,40 @@
-use crate::{networks::activation::Identity, Board};
+use crate::Board;
 
-use super::{
-    conv::ConvLayer, layer::Layer, residual::ResidualBlock
-};
+use super::{accumulator::Accumulator, activation::SCReLU, layer::Layer};
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals)]
-pub const ValueFileDefaultName: &str = "nn-820e30473d09.network";
+pub const ValueFileDefaultName: &str = "nn-3f56cbc2597d.network";
 
-const BLOCKS: usize = 4;
-const FILTERS: usize = 4;
-const OUTPUT_CHANNELS: usize = 2;
+const INPUT_CHANNELS: usize = 64;
+const INPUT_DIM: usize = 8;
+const INPUT_SIZE: usize = INPUT_DIM * INPUT_DIM;
+const INPUT_EMBED: usize = INPUT_CHANNELS * INPUT_SIZE;
 
-const EMBED: usize = FILTERS * 64;
+const KERNEL_DIM: usize = 5;
+
+const OUTPUT_CHANNELS: usize = 8;
+const OUTPUT_DIM: usize = 4;
+const OUTPUT_SIZE: usize = OUTPUT_DIM * OUTPUT_DIM;
+const OUTPUT_EMBED: usize = OUTPUT_CHANNELS * OUTPUT_SIZE;
+
+const L3: usize = 64;
+const L4: usize = 64;
 
 #[repr(C)]
 pub struct ValueNetwork {
-    l1: Layer<f32, 768, EMBED>,
-    res_tower: [ResidualBlock<FILTERS>; BLOCKS],
-    l2: ConvLayer<FILTERS, OUTPUT_CHANNELS>,
-    l3: Layer<f32, { OUTPUT_CHANNELS * 64 }, 3>
+    l1: Layer<f32, 3072, INPUT_EMBED>,
+    l2: ConvLayer,
+    l3: Layer<f32, OUTPUT_EMBED, L3>,
+    l4: Layer<f32, L3, L4>,
+    l5: Layer<f32, L4, 3>,
 }
 
 impl ValueNetwork {
     pub fn eval(&self, board: &Board) -> (f32, f32, f32) {
         let mut count = 0;
         let mut feats = [0; 32];
-        board.map_value_features(|feat| {
+        board.map_features(|feat| {
             feats[count] = feat;
             count += 1;
         });
@@ -35,14 +43,12 @@ impl ValueNetwork {
 
         l2.add_multi(&feats[..count], &self.l1.weights);
 
-        l2.relu();
-
-        for block in &self.res_tower {
-            l2 = block.forward(&l2);
-        }
+        l2.screlu();
 
         let l3 = self.l2.forward(&l2);
-        let out = self.l3.forward::<Identity>(&l3);
+        let l4 = self.l3.forward::<SCReLU>(&l3);
+        let l5 = self.l4.forward::<SCReLU>(&l4);
+        let out = self.l5.forward::<SCReLU>(&l5);
 
         let mut win = out.0[2];
         let mut draw = out.0[1];
@@ -57,5 +63,52 @@ impl ValueNetwork {
         let sum = win + draw + loss;
 
         (win / sum, draw / sum, loss / sum)
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ConvKernel([[f32; KERNEL_DIM]; KERNEL_DIM]);
+
+#[repr(C)]
+pub struct ConvLayer {
+    weights: [[ConvKernel; INPUT_CHANNELS]; OUTPUT_CHANNELS],
+    biases: [[f32; OUTPUT_SIZE]; OUTPUT_CHANNELS],
+}
+
+impl ConvLayer {
+    pub fn forward(&self, input: &Accumulator<f32, INPUT_EMBED>) -> Accumulator<f32, OUTPUT_EMBED> {
+        let mut out = Accumulator([0.0; OUTPUT_EMBED]);
+
+        for i in 0..OUTPUT_CHANNELS {
+            for j in 0..OUTPUT_SIZE {
+                out.0[OUTPUT_SIZE * i + j] = self.biases[i][j];
+            }
+        }
+
+        for i in 0..OUTPUT_CHANNELS {
+            for j in 0..INPUT_CHANNELS {
+                let kernel = self.weights[i][j];
+
+                for x in 0..OUTPUT_DIM {
+                    for y in 0..OUTPUT_DIM {
+                        let mut elem = 0.0;
+
+                        for a in 0..KERNEL_DIM {
+                            for b in 0..KERNEL_DIM {
+                                let ia = x + a;
+                                let ib = y + b;
+
+                                elem += kernel.0[a][b] * input.0[64 * j + 8 * ia + ib];
+                            }
+                        }
+
+                        out.0[OUTPUT_SIZE * i + 4 * x + y] += elem;
+                    }
+                }
+            }
+        }
+
+        out
     }
 }
