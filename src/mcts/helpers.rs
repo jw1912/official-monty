@@ -45,12 +45,14 @@ impl SearchHelpers {
     pub fn get_explore_scaling(params: &MctsParams, node: &Node) -> f32 {
         #[cfg(not(feature = "datagen"))]
         {
-            let mut scale = Self::base_explore_scaling(params, node);
+            let scale = Self::base_explore_scaling(params, node);
 
             let gini = node.gini_impurity();
-            scale *= (params.gini_base() - params.gini_ln_multiplier() * (params.gini_offset() - gini).ln())
-                .min(params.gini_min());
-            scale
+            let gini_scale = params.gini_base() - params.gini_ln_multiplier() * (params.gini_offset() - gini).ln();
+            let gini_scale = gini_scale.clamp(params.gini_min(), params.gini_max());
+            let gini_scale = (gini_scale * 16384.0).round() / 16384.0;
+
+            scale * gini_scale
         }
 
         #[cfg(feature = "datagen")]
