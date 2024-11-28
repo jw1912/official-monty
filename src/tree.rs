@@ -188,7 +188,7 @@ impl Tree {
             } else {
                 (*policy - max).exp()
             };
-            
+
             total += *policy;
         }
 
