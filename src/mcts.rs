@@ -236,7 +236,7 @@ impl<'a> Searcher<'a> {
 
             self.tree[ptr].clear();
             self.tree
-                .expand_node(ptr, &self.root_position, self.params, self.policy, 1);
+                .expand_node::<true>(ptr, &self.root_position, self.params, self.policy);
 
             let root_eval = self.root_position.get_value_wdl(self.value, self.params);
             self.tree[ptr].update(1.0 - root_eval);
@@ -244,22 +244,7 @@ impl<'a> Searcher<'a> {
         // relabel preexisting root policies with root PST value
         else if self.tree[node].has_children() {
             self.tree
-                .relabel_policy(node, &self.root_position, self.params, self.policy, 1);
-
-            let first_child_ptr = { *self.tree[node].actions() };
-
-            for action in 0..self.tree[node].num_actions() {
-                let ptr = first_child_ptr + action;
-
-                if ptr.is_null() || !self.tree[ptr].has_children() {
-                    continue;
-                }
-
-                let mut position = self.root_position.clone();
-                position.make_move(self.tree[ptr].parent_move());
-                self.tree
-                    .relabel_policy(ptr, &position, self.params, self.policy, 2);
-            }
+                .relabel_policy(node, &self.root_position, self.params, self.policy);
         }
 
         let search_stats = SearchStats::default();
@@ -338,7 +323,7 @@ impl<'a> Searcher<'a> {
             // expand node on the second visit
             if node.is_not_expanded() {
                 self.tree
-                    .expand_node(ptr, pos, self.params, self.policy, *depth)?;
+                    .expand_node::<false>(ptr, pos, self.params, self.policy)?;
             }
 
             // this node has now been accessed so we need to move its

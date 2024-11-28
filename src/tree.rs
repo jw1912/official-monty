@@ -11,7 +11,7 @@ use std::{
     time::Instant,
 };
 
-use crate::{chess::ChessState, mcts::SearchHelpers, GameState, MctsParams, PolicyNetwork};
+use crate::{chess::ChessState, GameState, MctsParams, PolicyNetwork};
 
 pub struct Tree {
     tree: [TreeHalf; 2],
@@ -150,13 +150,12 @@ impl Tree {
         self.tree[0].is_empty() && self.tree[1].is_empty()
     }
 
-    pub fn expand_node(
+    pub fn expand_node<const ROOT: bool>(
         &self,
         node_ptr: NodePtr,
         pos: &ChessState,
         params: &MctsParams,
         policy: &PolicyNetwork,
-        depth: usize,
     ) -> Option<()> {
         let node = &self[node_ptr];
 
@@ -181,17 +180,15 @@ impl Tree {
 
         let new_ptr = self.tree[self.half()].reserve_nodes(actions.len())?;
 
-        let pst = match depth {
-            0 => unreachable!(),
-            1 => params.root_pst(),
-            2 => params.depth_2_pst(),
-            3.. => SearchHelpers::get_pst(self[node_ptr].q(), params),
-        };
-
         let mut total = 0.0;
 
         for (_, policy) in actions.iter_mut() {
-            *policy = ((*policy - max) / pst).exp();
+            *policy = if ROOT {
+                ((*policy - max) / params.root_pst()).exp()
+            } else {
+                (*policy - max).exp()
+            };
+            
             total += *policy;
         }
 
@@ -220,7 +217,6 @@ impl Tree {
         pos: &ChessState,
         params: &MctsParams,
         policy: &PolicyNetwork,
-        depth: u8,
     ) {
         let feats = pos.get_policy_feats(policy);
         let mut max = f32::NEG_INFINITY;
@@ -238,17 +234,10 @@ impl Tree {
             max = max.max(policy);
         }
 
-        let pst = match depth {
-            0 => unreachable!(),
-            1 => params.root_pst(),
-            2 => params.depth_2_pst(),
-            3.. => unreachable!(),
-        };
-
         let mut total = 0.0;
 
         for policy in &mut policies {
-            *policy = ((*policy - max) / pst).exp();
+            *policy = ((*policy - max) / params.root_pst()).exp();
             total += *policy;
         }
 
