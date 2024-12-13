@@ -6,7 +6,7 @@ use crate::{
     Board,
 };
 
-const TOTAL_THREATS: usize = 2 * 12 * ValueOffsets::END;
+const TOTAL_THREATS: usize = 2 * ValueOffsets::END;
 pub const TOTAL: usize = TOTAL_THREATS + 768;
 
 pub fn map_features<F: FnMut(usize)>(pos: &Board, mut f: F) {
@@ -28,18 +28,10 @@ pub fn map_features<F: FnMut(usize)>(pos: &Board, mut f: F) {
         }
     };
 
-    let mut pieces = [13; 64];
-    for side in [Side::WHITE, Side::BLACK] {
-        for piece in Piece::PAWN..=Piece::KING {
-            let pc = 6 * side + piece - 2;
-            map_bb(bbs[side] & bbs[piece], |sq| pieces[sq] = pc);
-        }
-    }
-
     let occ = bbs[0] | bbs[1];
 
     for side in [Side::WHITE, Side::BLACK] {
-        let side_offset = 12 * ValueOffsets::END * side;
+        let side_offset = ValueOffsets::END * side;
 
         for piece in Piece::PAWN..=Piece::KING {
             map_bb(bbs[side] & bbs[piece], |sq| {
@@ -56,7 +48,7 @@ pub fn map_features<F: FnMut(usize)>(pos: &Board, mut f: F) {
                 f(TOTAL_THREATS + [0, 384][side] + 64 * (piece - 2) + sq);
                 map_bb(threats, |dest| {
                     let idx = map_piece_threat(piece, sq, dest);
-                    f(side_offset + pieces[dest] * ValueOffsets::END + idx)
+                    f(side_offset + idx)
                 });
             });
         }
