@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use crate::{
     mcts::{MctsParams, Searcher},
-    tree::Node,
+    tree::Node, Tree,
 };
 
 pub struct SearchHelpers;
@@ -68,8 +68,17 @@ impl SearchHelpers {
     ///
     /// #### Note
     /// Must return a value in [0, 1].
-    pub fn get_fpu(node: &Node) -> f32 {
-        1.0 - node.q()
+    pub fn get_fpu(tree: &Tree, node: &Node) -> f32 {
+        let first_child_ptr = node.actions();
+        let mut visited_policy = 0.0;
+        for action in 0..node.num_actions() {
+            let child = &tree[*first_child_ptr + action];
+            if child.visits() > 0 {
+                visited_policy += child.policy();
+            }
+        }
+        
+        1.0 - node.q() - 0.01 * visited_policy.sqrt()
     }
 
     /// Get a predicted win probability for an action
