@@ -84,8 +84,10 @@ impl SearchHelpers {
         } else {
             let mut q = node.q();
 
-            if node.visits() < 16 {
-                q += (fpu - q) / (1.0 + node.visits() as f32)
+            let v = node.visits();
+            if v < 32 {
+                let scale = v as f32 / 4.0;
+                q = (fpu + scale * q) / (1.0 + scale)
             }
 
             q
