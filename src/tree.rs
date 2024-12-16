@@ -409,4 +409,25 @@ impl Tree {
             }
         })
     }
+
+    pub fn kld(&self, node: &Node) -> Option<f32> {
+        if node.visits() <= node.num_actions() as i32 {
+            return None;
+        }
+
+        let mut kld = 0.0;
+        let pvisits = f64::from(node.visits() - 1);
+        let child_ptr = node.actions();
+
+        for i in 0..node.num_actions() {
+            let child = &self[*child_ptr + i];
+            if child.visits() != 0 {
+                let p = f64::from(child.visits()) / pvisits;
+                let q = f64::from(child.policy());
+                kld += p * (p / q).ln();
+            }
+        }
+
+        Some(kld as f32)
+    }
 }

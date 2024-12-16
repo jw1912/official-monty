@@ -403,7 +403,7 @@ impl<'a> Searcher<'a> {
     fn pick_action(&self, ptr: NodePtr, node: &Node) -> usize {
         let is_root = ptr == self.tree.root_node();
 
-        let cpuct = SearchHelpers::get_cpuct(self.params, node, is_root);
+        let cpuct = SearchHelpers::get_cpuct(self.tree, self.params, node, is_root);
         let fpu = SearchHelpers::get_fpu(node);
         let expl_scale = SearchHelpers::get_explore_scaling(self.params, node);
 
