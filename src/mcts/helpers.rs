@@ -82,7 +82,13 @@ impl SearchHelpers {
         if node.visits() == 0 {
             fpu
         } else {
-            node.q()
+            let mut q = node.q();
+
+            if node.visits() < 16 {
+                q += (fpu - q) / (1.0 + node.visits() as f32)
+            }
+
+            q
         }
     }
 
