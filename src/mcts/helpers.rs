@@ -32,7 +32,8 @@ impl SearchHelpers {
 
         // scale CPUCT with KL-divergence
         if let Some(kld) = tree.kld(node) {
-            cpuct *= 1.0 + params.cpuct_kld_weight() * (params.cpuct_kld_scale() * kld).tanh();
+            let scaled = params.cpuct_kld_scale() * (kld - params.cpuct_kld_offset());
+            cpuct *= 1.0 + params.cpuct_kld_weight() * scaled.tanh();
         }
 
         cpuct
