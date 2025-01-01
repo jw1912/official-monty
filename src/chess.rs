@@ -4,6 +4,8 @@ mod consts;
 mod frc;
 mod moves;
 
+use consts::Piece;
+
 use crate::{
     networks::{Accumulator, POLICY_L1},
     MctsParams, PolicyNetwork, ValueNetwork,
@@ -122,17 +124,12 @@ impl ChessState {
         self.board.stm()
     }
 
-    pub fn get_policy_feats(&self, policy: &PolicyNetwork) -> Accumulator<i16, { POLICY_L1 / 2 }> {
-        policy.hl(&self.board)
-    }
-
     pub fn get_policy(
         &self,
         mov: Move,
-        hl: &Accumulator<i16, { POLICY_L1 / 2 }>,
-        policy: &PolicyNetwork,
+        _policy: &PolicyNetwork,
     ) -> f32 {
-        policy.get(&self.board, &mov, hl)
+        if mov.is_capture() || mov.is_promo() { 1.0 } else { 0.0 }
     }
 
     #[cfg(not(feature = "datagen"))]
@@ -140,12 +137,18 @@ impl ChessState {
         self.board.piece(piece).count_ones() as i32
     }
 
-    pub fn get_value(&self, value: &ValueNetwork, _params: &MctsParams) -> i32 {
-        const K: f32 = 400.0;
-        let (win, draw, _) = value.eval(&self.board);
+    pub fn get_value(&self, _value: &ValueNetwork, _params: &MctsParams) -> i32 {
+        const VALS: [i32; 8] = [0, 0, 100, 300, 300, 500, 900, 0];
 
-        let score = win + draw / 2.0;
-        let cp = (-K * (1.0 / score.clamp(0.0, 1.0) - 1.0).ln()) as i32;
+        let mut cp = 0;
+        let boys = self.board.boys();
+        let opps = self.board.opps();
+
+        for (pc, &val) in VALS.iter().enumerate().skip(Piece::PAWN) {
+            let piece = self.board.piece(pc);
+            cp += val * (piece & boys).count_ones() as i32;
+            cp -= val * (piece & opps).count_ones() as i32;
+        } 
 
         #[cfg(not(feature = "datagen"))]
         {
@@ -174,11 +177,10 @@ impl ChessState {
     }
 
     pub fn display(&self, policy: &PolicyNetwork) {
-        let feats = self.get_policy_feats(policy);
         let mut moves = Vec::new();
         let mut max = f32::NEG_INFINITY;
         self.map_legal_moves(|mov| {
-            let policy = self.get_policy(mov, &feats, policy);
+            let policy = self.get_policy(mov, policy);
             moves.push((mov, policy));
 
             if policy > max {

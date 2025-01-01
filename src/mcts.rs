@@ -209,6 +209,7 @@ impl<'a> Searcher<'a> {
                     new_depth,
                     timer,
                     search_stats.total_nodes.load(Ordering::Relaxed),
+                    search_stats.total_iters.load(Ordering::Relaxed),
                 );
             }
         }
@@ -301,6 +302,7 @@ impl<'a> Searcher<'a> {
                 search_stats.avg_depth.load(Ordering::Relaxed).max(1),
                 &timer,
                 search_stats.total_nodes.load(Ordering::Relaxed),
+                search_stats.total_iters.load(Ordering::Relaxed),
             );
         }
 
@@ -426,7 +428,7 @@ impl<'a> Searcher<'a> {
         })
     }
 
-    fn search_report(&self, depth: usize, timer: &Instant, nodes: usize) {
+    fn search_report(&self, depth: usize, timer: &Instant, nodes: usize, iters: usize) {
         print!("info depth {depth} ");
         let (pv_line, score) = self.get_pv(depth);
 
@@ -442,8 +444,9 @@ impl<'a> Searcher<'a> {
         let elapsed = timer.elapsed();
         let nps = nodes as f32 / elapsed.as_secs_f32();
         let ms = elapsed.as_millis();
+        let its = iters as f32 / elapsed.as_secs_f32();
 
-        print!("time {ms} nodes {nodes} nps {nps:.0} pv");
+        print!("time {ms} nodes {nodes} nps {nps:.0} iters {iters} its {its:.0} pv");
 
         for mov in pv_line {
             print!(" {}", self.root_position.conv_mov_to_str(mov));
