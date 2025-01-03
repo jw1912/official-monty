@@ -235,11 +235,11 @@ impl<'a> Searcher<'a> {
             assert_eq!(node, ptr);
 
             self.tree[ptr].clear();
-            self.tree
-                .expand_node(ptr, &self.root_position, self.params, self.policy, 1);
 
             let root_eval = self.root_position.get_value_wdl(self.value, self.params);
             self.tree[ptr].update(1.0 - root_eval);
+            self.tree
+                .expand_node(ptr, &self.root_position, self.params, self.policy, 1);
         }
         // relabel preexisting root policies with root PST value
         else if self.tree[node].has_children() {
