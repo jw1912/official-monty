@@ -445,8 +445,8 @@ impl<'a> Searcher<'a> {
 
             // virtual loss
             let threads = f64::from(child.threads());
-            let visits = f64::from(child.visits());
             if threads > 0.0 {
+                let visits = f64::from(child.visits());
                 let q2 = f64::from(q) * visits / (visits + threads);
                 q = q2 as f32;
             }
