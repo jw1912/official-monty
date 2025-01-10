@@ -450,7 +450,7 @@ impl<'a> Searcher<'a> {
 
             let mut policy = child.policy();
 
-            let proportionality_factor = 0.0001;
+            let proportionality_factor = 0.001;
 
             let policy_decay_factor = 1.0 / (1.0 + proportionality_factor * visits as f32).sqrt();
             policy = policy / (policy + (1.0 - policy) * policy_decay_factor);
