@@ -436,6 +436,9 @@ impl<'a> Searcher<'a> {
         let expl_scale = SearchHelpers::get_explore_scaling(self.params, node);
 
         let expl = cpuct * expl_scale;
+        let parent_visits = node.visits();
+        let proportionality_factor = 0.0001;
+        let policy_decay_factor = 1.0 / (1.0 + (proportionality_factor * f64::from(parent_visits)).ln_1p() as f32).sqrt();
 
         self.tree.get_best_child_by_key(ptr, |child| {
             let mut q = SearchHelpers::get_action_value(child, fpu);
@@ -449,10 +452,6 @@ impl<'a> Searcher<'a> {
             }
 
             let mut policy = child.policy();
-
-            let proportionality_factor = 0.001;
-
-            let policy_decay_factor = 1.0 / (1.0 + proportionality_factor * visits as f32).sqrt();
             policy = policy / (policy + (1.0 - policy) * policy_decay_factor);
 
             let u = expl * policy / (1 + child.visits()) as f32;
