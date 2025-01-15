@@ -11,4 +11,4 @@ else
 endif
 
 default:
-	cargo rustc --release --bin monty -- -C target-cpu=native --emit link=$(NAME)
+	cargo rustc --release --package monty --bin monty -- --emit link=$(NAME)
