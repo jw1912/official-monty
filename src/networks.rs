@@ -1,10 +1,7 @@
-mod accumulator;
-mod activation;
-mod layer;
-mod policy;
-mod threats;
-mod value;
+pub mod policy;
+pub mod value;
 
-pub use accumulator::Accumulator;
-pub use policy::{PolicyFileDefaultName, PolicyNetwork, UnquantisedPolicyNetwork, L1 as POLICY_L1};
-pub use value::{ValueFileDefaultName, ValueNetwork};
+#[repr(C)]
+struct Nets(value::ValueNetwork, policy::PolicyNetwork);
+
+static NETS: Nets = unsafe { std::mem::transmute(*include_bytes!("../ataxx.network")) };

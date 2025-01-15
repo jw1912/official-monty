@@ -11,7 +11,7 @@ use std::{
     time::Instant,
 };
 
-use crate::{chess::ChessState, mcts::SearchHelpers, GameState, MctsParams, PolicyNetwork};
+use crate::{ataxx::Board, mcts::SearchHelpers, networks::policy, GameState, MctsParams};
 
 pub struct Tree {
     tree: [TreeHalf; 2],
@@ -153,9 +153,8 @@ impl Tree {
     pub fn expand_node(
         &self,
         node_ptr: NodePtr,
-        pos: &ChessState,
+        pos: &Board,
         params: &MctsParams,
-        policy: &PolicyNetwork,
         depth: usize,
     ) -> Option<()> {
         let node = &self[node_ptr];
@@ -169,12 +168,12 @@ impl Tree {
             return Some(());
         }
 
-        let feats = pos.get_policy_feats(policy);
+        let feats = policy::get_feats(pos);
         let mut max = f32::NEG_INFINITY;
         let mut actions = Vec::new();
 
         pos.map_legal_moves(|mov| {
-            let policy = pos.get_policy(mov, &feats, policy);
+            let policy = policy::get(mov, &feats);
             actions.push((mov, policy));
             max = max.max(policy);
         });
@@ -212,12 +211,11 @@ impl Tree {
     pub fn relabel_policy(
         &self,
         node_ptr: NodePtr,
-        pos: &ChessState,
+        pos: &Board,
         params: &MctsParams,
-        policy: &PolicyNetwork,
         depth: u8,
     ) {
-        let feats = pos.get_policy_feats(policy);
+        let feats = policy::get_feats(pos);
         let mut max = f32::NEG_INFINITY;
 
         let mut policies = Vec::new();
@@ -227,7 +225,7 @@ impl Tree {
 
         for action in 0..num_actions {
             let mov = self[*actions + action].parent_move();
-            let policy = pos.get_policy(mov, &feats, policy);
+            let policy = policy::get(mov, &feats);
 
             policies.push(policy);
             max = max.max(policy);
@@ -288,7 +286,7 @@ impl Tree {
         }
     }
 
-    pub fn try_use_subtree(&self, root: &ChessState, prev_board: &Option<ChessState>) {
+    pub fn try_use_subtree(&self, root: &Board, prev_board: &Option<Board>) {
         let t = Instant::now();
 
         if self.is_empty() {
@@ -331,11 +329,11 @@ impl Tree {
     fn recurse_find(
         &self,
         start: NodePtr,
-        this_board: &ChessState,
-        board: &ChessState,
+        this_board: &Board,
+        board: &Board,
         depth: u8,
     ) -> NodePtr {
-        if this_board.board() == board.board() {
+        if this_board == board {
             return start;
         }
 
@@ -350,12 +348,12 @@ impl Tree {
         }
 
         for action in 0..self[start].num_actions() {
-            let mut child_board = this_board.clone();
+            let mut child_board = *this_board;
 
             let child_ptr = first_child_ptr + action;
             let child = &self[child_ptr];
 
-            child_board.make_move(child.parent_move());
+            child_board.make(child.parent_move());
 
             let found = self.recurse_find(child_ptr, &child_board, board, depth - 1);
 

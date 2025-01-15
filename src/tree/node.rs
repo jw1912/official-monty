@@ -175,7 +175,7 @@ impl Node {
     }
 
     pub fn parent_move(&self) -> Move {
-        Move::from(self.mov.load(Ordering::Relaxed))
+        <Move as From<u16>>::from(self.mov.load(Ordering::Relaxed))
     }
 
     pub fn copy_from(&self, other: &Self) {

@@ -5,9 +5,7 @@ pub use helpers::SearchHelpers;
 pub use params::MctsParams;
 
 use crate::{
-    chess::Move,
-    tree::{Node, NodePtr, Tree},
-    ChessState, GameState, PolicyNetwork, ValueNetwork,
+    ataxx::Move, networks::value, tree::{Node, NodePtr, Tree}, Board, GameState
 };
 
 use std::{
@@ -34,29 +32,23 @@ pub struct SearchStats {
 }
 
 pub struct Searcher<'a> {
-    root_position: ChessState,
+    root_position: Board,
     tree: &'a Tree,
     params: &'a MctsParams,
-    policy: &'a PolicyNetwork,
-    value: &'a ValueNetwork,
     abort: &'a AtomicBool,
 }
 
 impl<'a> Searcher<'a> {
     pub fn new(
-        root_position: ChessState,
+        root_position: Board,
         tree: &'a Tree,
         params: &'a MctsParams,
-        policy: &'a PolicyNetwork,
-        value: &'a ValueNetwork,
         abort: &'a AtomicBool,
     ) -> Self {
         Self {
             root_position,
             tree,
             params,
-            policy,
-            value,
             abort,
         }
     }
@@ -66,24 +58,22 @@ impl<'a> Searcher<'a> {
         &self,
         limits: &Limits,
         timer: &Instant,
-        #[cfg(not(feature = "uci-minimal"))] timer_last_output: &mut Instant,
+        timer_last_output: &mut Instant,
         search_stats: &SearchStats,
         best_move: &mut Move,
         best_move_changes: &mut i32,
         previous_score: &mut f32,
-        #[cfg(not(feature = "uci-minimal"))] uci_output: bool,
+        uci_output: bool,
     ) {
         if self.playout_until_full_internal(search_stats, true, || {
             self.check_limits(
                 limits,
                 timer,
-                #[cfg(not(feature = "uci-minimal"))]
                 timer_last_output,
                 search_stats,
                 best_move,
                 best_move_changes,
                 previous_score,
-                #[cfg(not(feature = "uci-minimal"))]
                 uci_output,
             )
         }) {
@@ -105,7 +95,7 @@ impl<'a> Searcher<'a> {
         F: FnMut() -> bool,
     {
         loop {
-            let mut pos = self.root_position.clone();
+            let mut pos = self.root_position;
             let mut this_depth = 0;
 
             if self
@@ -147,12 +137,12 @@ impl<'a> Searcher<'a> {
         &self,
         limits: &Limits,
         timer: &Instant,
-        #[cfg(not(feature = "uci-minimal"))] timer_last_output: &mut Instant,
+        timer_last_output: &mut Instant,
         search_stats: &SearchStats,
         best_move: &mut Move,
         best_move_changes: &mut i32,
         previous_score: &mut f32,
-        #[cfg(not(feature = "uci-minimal"))] uci_output: bool,
+        uci_output: bool,
     ) -> bool {
         let iters = search_stats.main_iters.load(Ordering::Relaxed);
 
@@ -211,7 +201,6 @@ impl<'a> Searcher<'a> {
                 return true;
             }
 
-            #[cfg(not(feature = "uci-minimal"))]
             if uci_output {
                 self.search_report(
                     new_depth,
@@ -224,7 +213,6 @@ impl<'a> Searcher<'a> {
             }
         }
 
-        #[cfg(not(feature = "uci-minimal"))]
         if uci_output && iters % 8192 == 0 && timer_last_output.elapsed().as_secs() >= 15 {
             self.search_report(
                 search_stats.avg_depth.load(Ordering::Relaxed),
@@ -247,7 +235,6 @@ impl<'a> Searcher<'a> {
         update_nodes: &mut usize,
     ) -> (Move, f32) {
         let timer = Instant::now();
-        #[cfg(not(feature = "uci-minimal"))]
         let mut timer_last_output = Instant::now();
 
         let node = self.tree.root_node();
@@ -261,30 +248,15 @@ impl<'a> Searcher<'a> {
 
             self.tree[ptr].clear();
             self.tree
-                .expand_node(ptr, &self.root_position, self.params, self.policy, 1);
+                .expand_node(ptr, &self.root_position, self.params, 1);
 
-            let root_eval = self.root_position.get_value_wdl(self.value, self.params);
+            let root_eval = value::get(&self.root_position);
             self.tree[ptr].update(1.0 - root_eval);
         }
         // relabel preexisting root policies with root PST value
         else if self.tree[node].has_children() {
             self.tree
-                .relabel_policy(node, &self.root_position, self.params, self.policy, 1);
-
-            let first_child_ptr = { *self.tree[node].actions() };
-
-            for action in 0..self.tree[node].num_actions() {
-                let ptr = first_child_ptr + action;
-
-                if ptr.is_null() || !self.tree[ptr].has_children() {
-                    continue;
-                }
-
-                let mut position = self.root_position.clone();
-                position.make_move(self.tree[ptr].parent_move());
-                self.tree
-                    .relabel_policy(ptr, &position, self.params, self.policy, 2);
-            }
+                .relabel_policy(node, &self.root_position, self.params, 1);
         }
 
         let search_stats = SearchStats::default();
@@ -300,13 +272,11 @@ impl<'a> Searcher<'a> {
                     self.playout_until_full_main(
                         &limits,
                         &timer,
-                        #[cfg(not(feature = "uci-minimal"))]
                         &mut timer_last_output,
                         &search_stats,
                         &mut best_move,
                         &mut best_move_changes,
                         &mut previous_score,
-                        #[cfg(not(feature = "uci-minimal"))]
                         uci_output,
                     );
                 });
@@ -338,7 +308,7 @@ impl<'a> Searcher<'a> {
 
     fn perform_one_iteration(
         &self,
-        pos: &mut ChessState,
+        pos: &mut Board,
         ptr: NodePtr,
         depth: &mut usize,
     ) -> Option<f32> {
@@ -366,7 +336,7 @@ impl<'a> Searcher<'a> {
             // expand node on the second visit
             if node.is_not_expanded() {
                 self.tree
-                    .expand_node(ptr, pos, self.params, self.policy, *depth)?;
+                    .expand_node(ptr, pos, self.params, *depth)?;
             }
 
             // this node has now been accessed so we need to move its
@@ -381,7 +351,7 @@ impl<'a> Searcher<'a> {
 
             let mov = self.tree[child_ptr].parent_move();
 
-            pos.make_move(mov);
+            pos.make(mov);
 
             self.tree[child_ptr].inc_threads();
 
@@ -419,9 +389,9 @@ impl<'a> Searcher<'a> {
         Some(u)
     }
 
-    fn get_utility(&self, ptr: NodePtr, pos: &ChessState) -> f32 {
+    fn get_utility(&self, ptr: NodePtr, pos: &Board) -> f32 {
         match self.tree[ptr].state() {
-            GameState::Ongoing => pos.get_value_wdl(self.value, self.params),
+            GameState::Ongoing => value::get(pos),
             GameState::Draw => 0.5,
             GameState::Lost(_) => 0.0,
             GameState::Won(_) => 1.0,
@@ -474,7 +444,7 @@ impl<'a> Searcher<'a> {
         print!("time {ms} nodes {nodes} nps {nps:.0} pv");
 
         for mov in pv_line {
-            print!(" {}", self.root_position.conv_mov_to_str(mov));
+            print!(" {}", mov.uai());
         }
 
         println!();
@@ -531,7 +501,7 @@ impl<'a> Searcher<'a> {
         let first_child_ptr = { *self.tree[self.tree.root_node()].actions() };
         for action in 0..self.tree[self.tree.root_node()].num_actions() {
             let child = &self.tree[first_child_ptr + action];
-            let mov = self.root_position.conv_mov_to_str(child.parent_move());
+            let mov = child.parent_move().uai();
             let q = child.q() * 100.0;
             println!(
                 "{mov} -> {q:.2}% V({}) S({})",
