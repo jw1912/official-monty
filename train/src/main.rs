@@ -5,29 +5,28 @@ mod preparer;
 mod trainer;
 
 use bullet::{
-    nn::{
-        optimiser::{AdamWOptimiser, AdamWParams, Optimiser},
-        Activation, ExecutionContext, Graph, NetworkBuilder, Shape,
-    },
-    trainer::{
+    default::loader::DataLoader, nn::{
+        optimiser::{AdamWOptimiser, AdamWParams, Optimiser}, Activation, ExecutionContext, Graph, NetworkBuilder, Node, Shape
+    }, trainer::{
         logger,
         save::{Layout, QuantTarget, SavedFormat},
         schedule::{lr, wdl, TrainingSchedule, TrainingSteps},
         settings::LocalSettings,
-        NetworkTrainer,
+        NetworkTrainer, DataPreparer
     },
 };
 
 use trainer::Trainer;
 
 const ID: &str = "policy001";
+const DATA: &str = "ataxxgen001.binpack";
 
 fn main() {
-    let data_preparer = preparer::DataPreparer::new("ataxxgen001.binpack", 4096);
+    let data_preparer = preparer::DataPreparer::new(DATA, 4096);
 
     let size = 256;
 
-    let graph = network(size);
+    let (graph, node) = network(size);
 
     let optimiser_params = AdamWParams {
         decay: 0.01,
@@ -67,6 +66,9 @@ fn main() {
     schedule.display();
     settings.display();
 
+    trainer.load_from_checkpoint("checkpoints/policy001-40");
+    eval_random(&mut trainer, node, &data_preparer);
+
     trainer.train_custom(
         &data_preparer,
         &Option::<preparer::DataPreparer>::None,
@@ -74,23 +76,63 @@ fn main() {
         &settings,
         |sb, trainer, schedule, _| {
             if schedule.should_save(sb) {
-                trainer
-                    .save_weights_portion(
-                        &format!("checkpoints/{ID}-{sb}.network"),
-                        &[
-                            SavedFormat::new("l0w", QuantTarget::Float, Layout::Normal),
-                            SavedFormat::new("l0b", QuantTarget::Float, Layout::Normal),
-                            SavedFormat::new("l1w", QuantTarget::Float, Layout::Transposed),
-                            SavedFormat::new("l1b", QuantTarget::Float, Layout::Normal),
-                        ],
-                    )
-                    .unwrap();
+                save(trainer, &format!("checkpoints/{ID}-{sb}/quantised.network"));
             }
         },
     );
+
+    let data_preparer = preparer::DataPreparer::new(DATA, 4096);
+    for _ in 0..5 {
+        eval_random(&mut trainer, node, &data_preparer);
+    }
 }
 
-fn network(size: usize) -> Graph {
+fn eval_random(trainer: &mut Trainer, node: Node, data_preparer: &preparer::DataPreparer) {
+    data_preparer.loader.map_batches(0, 1, |batch| {
+        println!("{}", batch[0].pos.as_fen());
+
+        let indices: Vec<_> = batch[0].moves.iter().take(batch[0].num).map(|x| moves::map_move_to_index(x.0)).collect();
+
+        let prepd = data_preparer.prepare(batch, 1, 1.0);
+        trainer.load_batch(&prepd);
+        trainer.optimiser.graph_mut().forward();
+        let mut vals = trainer.optimiser.graph().get_node(node).get_dense_vals().unwrap();
+
+        let mut max = 0.0;
+        let mut total = 0.0;
+        for &i in &indices {
+            max = vals[i].max(max);
+        }
+
+        for &i in &indices {
+            vals[i] = (vals[i] - max).exp();
+            total += vals[i];
+        }
+
+        for (j, &i) in indices.iter().enumerate() {
+            vals[i] /= total;
+            println!("{} -> {:.2}%", batch[0].moves[j].0.uai(), 100.0 * vals[i]);
+        }
+
+        true
+    });
+}
+
+fn save(trainer: &Trainer, path: &str) {
+    trainer
+    .save_weights_portion(
+        path,
+        &[
+            SavedFormat::new("l0w", QuantTarget::I8(128), Layout::Normal),
+            SavedFormat::new("l0b", QuantTarget::I8(128), Layout::Normal),
+            SavedFormat::new("l1w", QuantTarget::I8(128), Layout::Transposed),
+            SavedFormat::new("l1b", QuantTarget::I8(128), Layout::Normal),
+        ],
+    )
+    .unwrap();
+}
+
+fn network(size: usize) -> (Graph, Node) {
     let builder = NetworkBuilder::default();
 
     let inputs = builder.new_input("inputs", Shape::new(inputs::INPUT_SIZE, 1));
@@ -104,5 +146,6 @@ fn network(size: usize) -> Graph {
     out = l1.forward(out);
     out.masked_softmax_crossentropy_loss(dist, mask);
 
-    builder.build(ExecutionContext::default())
+    let o = out.node();
+    (builder.build(ExecutionContext::default()), o)
 }

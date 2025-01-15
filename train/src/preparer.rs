@@ -11,7 +11,7 @@ use crate::{
 
 #[derive(Clone)]
 pub struct DataPreparer {
-    loader: DataLoader,
+    pub loader: DataLoader,
 }
 
 impl DataPreparer {

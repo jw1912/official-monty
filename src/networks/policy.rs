@@ -1,40 +1,100 @@
-use crate::ataxx::{Board, Move};
+use crate::ataxx::{Bitboard, Board, Move};
 
-use super::NETS;
+static POLICY: PolicyNetwork = unsafe {
+    std::mem::transmute(*include_bytes!("../../ataxx-policy.network"))
+};
 
 const HIDDEN: usize = 256;
+const Q: i16 = 128;
 
 #[repr(C)]
-pub struct Accumulator([f32; HIDDEN]);
+#[derive(Clone, Copy)]
+pub struct Accumulator<T: Copy>([T; HIDDEN]);
 
 #[repr(C)]
 pub struct PolicyNetwork {
-    l0w: [Accumulator; 98],
-    l0b: Accumulator,
-    l1w: Accumulator,
-    l1b: f32,
+    l0w: [Accumulator<i8>; 98],
+    l0b: Accumulator<i8>,
+    l1w: [Accumulator<i8>; 578],
+    l1b: [i8; 578],
 }
 
 impl PolicyNetwork {
-    pub fn get(&self, mov: Move, feats: &SparseVector) -> f32 {
-        let from_subnet = &self.subnets[mov.src().min(49)];
-        let from_vec = from_subnet.out(feats);
+    pub fn get(&self, mov: Move, feats: &Accumulator<i16>) -> f32 {
+        let idx = map_move_to_index(mov);
 
-        let to_subnet = &self.subnets[50 + mov.to().min(48)];
-        let to_vec = to_subnet.out(feats);
+        let mut res = 0;
 
-        from_vec.dot(&to_vec)
+        for (&i, &j) in feats.0.iter().zip(POLICY.l1w[idx].0.iter()) {
+            res += i32::from(i) * i32::from(j);
+        }
+
+        (res as f32 / f32::from(Q) + f32::from(POLICY.l1b[idx])) / f32::from(Q)
     }
 }
 
-pub fn get(mov: Move, feats: &SparseVector) -> f32 {
-    NETS.1.get(mov, feats)
+pub fn get(mov: Move, feats: &Accumulator<i16>) -> f32 {
+    POLICY.get(mov, feats)
 }
 
-pub fn get_feats(pos: &Board) -> SparseVector {
-    let mut feats = SparseVector::with_capacity(36);
+pub fn get_feats(pos: &Board) -> Accumulator<i16> {
+    let mut hl = Accumulator([0; HIDDEN]);
+    
+    for (i, &j) in hl.0.iter_mut().zip(POLICY.l0b.0.iter()) {
+        *i = i16::from(j);
+    }
 
-    pos.value_features_map(|feat| feats.push(feat));
+    map_feats(pos, |feat| {
+        for (i, &j) in hl.0.iter_mut().zip(POLICY.l0w[feat].0.iter()) {
+            *i += i16::from(j);
+        }
+    });
 
-    feats
+    for i in &mut hl.0 {
+        *i = (*i).clamp(0, Q);
+    }
+
+    hl
 }
+
+fn map_feats(pos: &Board, mut f: impl FnMut(usize)) {
+    let mut bb = pos.boys();
+    while bb > 0 {
+        f(bb.trailing_zeros() as usize);
+        bb &= bb - 1;
+    }
+
+    let mut bb = pos.opps();
+    while bb > 0 {
+        f(49 + bb.trailing_zeros() as usize);
+        bb &= bb - 1;
+    }
+}
+
+fn map_move_to_index(mov: Move) -> usize {
+    if mov.is_single() {
+        mov.to()
+    } else {
+        let src = mov.src();
+        let dst = mov.to();
+
+        let doubles = Bitboard::doubles(src);
+        let below = doubles & ((1 << dst) - 1);
+
+        49 + OFFSETS[src] + below.count_ones() as usize
+    }
+}
+
+static OFFSETS: [usize; 50] = {
+    let mut src = 0;
+
+    let mut res = [0; 50];
+
+    while src < 49 {
+        let reachable = Bitboard::doubles(src);
+        src += 1;
+        res[src] = res[src - 1] + reachable.count_ones() as usize;
+    }
+
+    res
+};
