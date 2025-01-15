@@ -10,7 +10,6 @@ use std::{
 pub fn run() {
     let mut prev = None;
     let mut pos = Board::default();
-    let mut root_game_ply = 0;
     let mut params = MctsParams::default();
     let mut tree = Tree::new_mb(64, 1);
     let mut report_moves = false;
@@ -50,15 +49,11 @@ pub fn run() {
             ),
             "position" => position(commands, &mut pos),
             "go" => {
-                // increment game ply every time `go` is called
-                root_game_ply += 2;
-
                 go(
                     &commands,
                     &mut tree,
                     prev,
                     &pos,
-                    root_game_ply,
                     &params,
                     report_moves,
                     threads,
@@ -106,7 +101,6 @@ pub fn run() {
             "uai" => preamble(),
             "uainewgame" => {
                 prev = None;
-                root_game_ply = 0;
                 tree.clear(threads);
             }
             _ => {}
@@ -206,7 +200,6 @@ fn go(
     tree: &mut Tree,
     prev: Option<Board>,
     pos: &Board,
-    root_game_ply: u32,
     params: &MctsParams,
     report_moves: bool,
     threads: usize,
@@ -220,7 +213,6 @@ fn go(
     let mut times = [None; 2];
     let mut incs = [None; 2];
     let mut movestogo = None;
-    let mut opt_time = None;
 
     let mut mode = "";
 
@@ -253,10 +245,9 @@ fn go(
     // `go wtime <wtime> btime <btime> winc <winc> binc <binc>``
     if let Some(remaining) = times[pos.stm()] {
         let timeman =
-            SearchHelpers::get_time(remaining, incs[pos.stm()], root_game_ply, movestogo, params);
+            SearchHelpers::get_time(remaining, incs[pos.stm()], movestogo, params);
 
-        opt_time = Some(timeman.0);
-        max_time = Some(timeman.1);
+        max_time = Some(timeman);
     }
 
     // `go movetime <time>`
@@ -266,9 +257,6 @@ fn go(
     }
 
     // apply move overhead
-    if let Some(t) = opt_time.as_mut() {
-        *t = t.saturating_sub(move_overhead as u128);
-    }
     if let Some(t) = max_time.as_mut() {
         *t = t.saturating_sub(move_overhead as u128);
     }
@@ -279,7 +267,6 @@ fn go(
 
     let limits = Limits {
         max_time,
-        opt_time,
         max_depth,
         max_nodes,
     };
