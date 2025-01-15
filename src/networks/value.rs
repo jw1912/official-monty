@@ -30,7 +30,7 @@ fn screlu(x: i16) -> i32 {
 }
 
 impl ValueNetwork {
-    pub fn eval(&self, board: &Board) -> f32 {
+    pub fn eval(&self, board: &Board) -> i32 {
         let mut acc = self.l1_bias;
 
         board.value_features_map(|feat| {
@@ -45,12 +45,11 @@ impl ValueNetwork {
             eval += screlu(v) * i32::from(w);
         }
 
-        let cp = (eval / QA + i32::from(self.l2_bias)) * SCALE / QAB;
-
-        1.0 / (1.0 + (-cp as f32) / 400.0).exp()
+        (eval / QA + i32::from(self.l2_bias)) * SCALE / QAB
     }
 }
 
 pub fn get(pos: &Board) -> f32 {
-    NETS.0.eval(pos)
+    let cp = NETS.0.eval(pos);
+    1.0 / (1.0 + (-cp as f32 / 400.0).exp())
 }

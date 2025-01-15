@@ -1,7 +1,5 @@
 use crate::{
-    ataxx::{Board, Move},
-    mcts::{Limits, SearchHelpers, Searcher},
-    MctsParams, Tree,
+    ataxx::{Board, Move}, mcts::{Limits, SearchHelpers, Searcher}, networks::{policy, value}, MctsParams, Tree
 };
 
 use std::{
@@ -72,6 +70,39 @@ pub fn run() {
             }
             "quit" => std::process::exit(0),
             "params" => params.list_spsa(),
+            "eval" => {
+                let eval = 100.0 * value::get(&pos);
+                println!("wdl = {eval:.2}%");
+            }
+            "policy" => {
+                let f = policy::get_feats(&pos);
+                let mut max = f32::NEG_INFINITY;
+                let mut moves = Vec::new();
+
+                pos.map_legal_moves(|mov| {
+                    let s = mov.uai();
+                    let p = policy::get(mov, &f);
+
+                    if p > max {
+                        max = p;
+                    }
+
+                    moves.push((s, p));
+                });
+
+                let mut total = 0.0;
+
+                for (_, p) in &mut moves {
+                    *p = (*p - max).exp();
+                    total += *p;
+                }
+
+                moves.sort_by_key(|(_, p)| (p * 1000.0) as u32);
+
+                for (s, p) in moves {
+                    println!("{s} -> {:.2}%", p / total * 100.0);
+                }
+            }
             "uai" => preamble(),
             "uainewgame" => {
                 prev = None;
@@ -209,10 +240,10 @@ fn go(
                 "nodes" => max_nodes = cmd.parse().unwrap_or(max_nodes),
                 "movetime" => max_time = cmd.parse().ok(),
                 "depth" => max_depth = cmd.parse().unwrap_or(max_depth),
-                "wtime" => times[0] = saturating_parse(cmd),
-                "btime" => times[1] = saturating_parse(cmd),
-                "winc" => incs[0] = saturating_parse(cmd),
-                "binc" => incs[1] = saturating_parse(cmd),
+                "wtime" => times[1] = saturating_parse(cmd),
+                "btime" => times[0] = saturating_parse(cmd),
+                "winc" => incs[1] = saturating_parse(cmd),
+                "binc" => incs[0] = saturating_parse(cmd),
                 "movestogo" => movestogo = saturating_parse(cmd),
                 _ => mode = "none",
             },
