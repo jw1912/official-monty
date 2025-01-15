@@ -1,5 +1,8 @@
 use crate::{
-    ataxx::{Board, Move}, mcts::{Limits, SearchHelpers, Searcher}, networks::{policy, value}, MctsParams, Tree
+    ataxx::{Board, Move},
+    mcts::{Limits, MctsParams, SearchHelpers, Searcher},
+    networks::{policy, value},
+    tree::Tree,
 };
 
 use std::{
@@ -244,8 +247,7 @@ fn go(
 
     // `go wtime <wtime> btime <btime> winc <winc> binc <binc>``
     if let Some(remaining) = times[pos.stm()] {
-        let timeman =
-            SearchHelpers::get_time(remaining, incs[pos.stm()], movestogo, params);
+        let timeman = SearchHelpers::get_time(remaining, incs[pos.stm()], movestogo, params);
 
         max_time = Some(timeman);
     }
@@ -274,7 +276,7 @@ fn go(
     std::thread::scope(|s| {
         s.spawn(|| {
             let searcher = Searcher::new(*pos, tree, params, &abort);
-            let (mov, _) = searcher.search(threads, limits, true, &mut 0);
+            let (mov, _) = searcher.search(threads, limits, true, &mut 0, None);
             println!("bestmove {}", mov.uai());
 
             if report_moves {

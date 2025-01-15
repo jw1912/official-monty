@@ -1,7 +1,4 @@
-use crate::{
-    mcts::MctsParams,
-    tree::Node,
-};
+use crate::{mcts::MctsParams, tree::Node};
 
 pub struct SearchHelpers;
 

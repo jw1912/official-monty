@@ -1,4 +1,4 @@
-use crate::{ataxx::Move, Board};
+use crate::ataxx::{Board, Move};
 
 use goober::{activation, layer, FeedForwardNetwork, SparseVector};
 
@@ -18,7 +18,7 @@ pub struct PolicyNetwork {
 
 impl PolicyNetwork {
     pub fn get(&self, mov: Move, feats: &SparseVector) -> f32 {
-        let from_subnet = &self.subnets[mov.from().min(49)];
+        let from_subnet = &self.subnets[mov.src().min(49)];
         let from_vec = from_subnet.out(feats);
 
         let to_subnet = &self.subnets[50 + mov.to().min(48)];

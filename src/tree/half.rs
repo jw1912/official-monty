@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use super::{Node, NodePtr, GameState};
+use super::{GameState, Node, NodePtr};
 
 pub struct TreeHalf {
     pub(super) nodes: Vec<Node>,

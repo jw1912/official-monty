@@ -1,4 +1,4 @@
-use crate::Board;
+use crate::ataxx::Board;
 
 use super::NETS;
 

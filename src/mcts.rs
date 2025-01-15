@@ -5,7 +5,9 @@ pub use helpers::SearchHelpers;
 pub use params::MctsParams;
 
 use crate::{
-    ataxx::Move, networks::value, tree::{Node, NodePtr, Tree}, Board, GameState
+    ataxx::{Board, GameState, Move},
+    networks::value,
+    tree::{Node, NodePtr, Tree},
 };
 
 use std::{
@@ -198,6 +200,7 @@ impl<'a> Searcher<'a> {
         limits: Limits,
         uai_output: bool,
         update_nodes: &mut usize,
+        temp: Option<f32>,
     ) -> (Move, f32) {
         let timer = Instant::now();
         let mut timer_last_output = Instant::now();
@@ -264,7 +267,13 @@ impl<'a> Searcher<'a> {
         }
 
         let (_, mov, q) = self.get_best_action(self.tree.root_node());
-        (mov, q)
+
+        if let Some(temp) = temp {
+            let selected = self.tree.get_best_child_temp(temp);
+            (selected, q)
+        } else {
+            (mov, q)
+        }
     }
 
     fn perform_one_iteration(
@@ -296,8 +305,7 @@ impl<'a> Searcher<'a> {
         } else {
             // expand node on the second visit
             if node.is_not_expanded() {
-                self.tree
-                    .expand_node(ptr, pos, self.params, *depth)?;
+                self.tree.expand_node(ptr, pos, self.params, *depth)?;
             }
 
             // this node has now been accessed so we need to move its

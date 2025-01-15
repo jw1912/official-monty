@@ -113,7 +113,7 @@ impl Board {
     pub fn make(&mut self, mov: Move) {
         if !mov.is_pass() {
             let stm = self.stm();
-            let from = mov.from();
+            let from = mov.src();
             let to = mov.to();
 
             self.fullm += u16::from(stm == Side::BLU);
@@ -490,7 +490,7 @@ pub static ZVALS: [[u64; 49]; 2] = {
     }))
 };
 
-#[repr(align(2))]
+#[repr(C, align(2))]
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub struct Move {
     from: u8,
@@ -542,7 +542,7 @@ impl Move {
         self.from == 0 && self.to == 0
     }
 
-    pub fn from(&self) -> usize {
+    pub fn src(&self) -> usize {
         usize::from(self.from)
     }
 
@@ -558,9 +558,9 @@ impl Move {
         let mut res = String::new();
         let chs = ('a'..'h').collect::<Vec<_>>();
 
-        if self.from() != 63 {
-            res += chs[self.from() % 7].to_string().as_str();
-            res += format!("{}", 1 + self.from() / 7).as_str()
+        if self.src() != 63 {
+            res += chs[self.src() % 7].to_string().as_str();
+            res += format!("{}", 1 + self.src() / 7).as_str()
         }
 
         if self.to() != 63 {

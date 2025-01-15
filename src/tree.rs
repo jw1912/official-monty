@@ -11,7 +11,11 @@ use std::{
     time::Instant,
 };
 
-use crate::{ataxx::Board, mcts::SearchHelpers, networks::policy, GameState, MctsParams};
+use crate::{
+    ataxx::{Board, GameState, Move},
+    mcts::{MctsParams, SearchHelpers},
+    networks::policy,
+};
 
 pub struct Tree {
     tree: [TreeHalf; 2],
@@ -208,13 +212,7 @@ impl Tree {
         Some(())
     }
 
-    pub fn relabel_policy(
-        &self,
-        node_ptr: NodePtr,
-        pos: &Board,
-        params: &MctsParams,
-        depth: u8,
-    ) {
+    pub fn relabel_policy(&self, node_ptr: NodePtr, pos: &Board, params: &MctsParams, depth: u8) {
         let feats = policy::get_feats(pos);
         let mut max = f32::NEG_INFINITY;
 
@@ -396,5 +394,39 @@ impl Tree {
                 }
             }
         })
+    }
+
+    pub fn get_best_child_temp(&self, temp: f32) -> Move {
+        use rand::prelude::*;
+        use rand_distr::Uniform;
+
+        let node = &self[self.root_node()];
+        let child_ptr = node.actions();
+
+        let mut rng = rand::thread_rng();
+        let dist = Uniform::new(0.0, 1.0);
+        let rand = dist.sample(&mut rng);
+
+        let mut total = 0.0;
+        let mut distribution = vec![0.0; node.num_actions()];
+        let t = 1.0 / f64::from(temp);
+
+        for i in 0..node.num_actions() {
+            let child = &self[*child_ptr + i];
+            distribution[i] = f64::from(child.visits()).powf(t);
+            total += distribution[i];
+        }
+
+        let mut cumulative = 0.0;
+
+        for (i, weight) in distribution.iter().enumerate() {
+            cumulative += weight;
+
+            if cumulative / total > rand {
+                return self[*child_ptr + i].parent_move();
+            }
+        }
+
+        self[*child_ptr + (node.num_actions() - 1)].parent_move()
     }
 }

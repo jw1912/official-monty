@@ -6,7 +6,7 @@ use std::{
     },
 };
 
-use crate::{GameState, Move};
+use crate::ataxx::{GameState, Move};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct NodePtr(u32);
