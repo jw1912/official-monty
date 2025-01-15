@@ -121,9 +121,9 @@ fn parse_into_buffer(game: MontyAtaxxFormat, buffer: &mut Vec<DecompressedData>)
 
     let mut pos = Board::default();
 
-    for data in game.moves {
+    for (i, data) in game.moves.iter().enumerate() {
         if let Some(dist) = data.visit_distribution.as_ref() {
-            if dist.len() > 1 && dist.len() <= MAX_MOVES {
+            if i >= 10 && dist.len() > 1 && dist.len() <= MAX_MOVES {
                 let mut policy_data = DecompressedData {
                     pos,
                     moves: [(Move::NULL, 0); MAX_MOVES],

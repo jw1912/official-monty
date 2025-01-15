@@ -23,10 +23,7 @@ use trainer::Trainer;
 const ID: &str = "policy001";
 
 fn main() {
-    let data_preparer = preparer::DataPreparer::new(
-        "/home/privateclient/monty_value_training/interleaved.binpack",
-        96000,
-    );
+    let data_preparer = preparer::DataPreparer::new("ataxxgen001.binpack", 4096);
 
     let size = 12288;
 
