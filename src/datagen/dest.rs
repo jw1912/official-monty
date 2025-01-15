@@ -66,9 +66,10 @@ impl Destination {
         let elapsed = self.timer.elapsed().as_secs() as usize;
         let gph = 60 * 60 * self.games / elapsed;
         let pph = 60 * 60 * self.positions / elapsed;
+        let mpg = self.positions / self.games;
 
         println!(
-            "finished games {} losses {} draws {} wins {} bytes/pos {bpp} games/hr {gph} pos/hr {pph}",
+            "finished games {} losses {} draws {} wins {} bytes/pos {bpp} games/hr {gph} pos/hr {pph} moves/game {mpg}",
             self.games, self.results[0], self.results[1], self.results[2],
         )
     }
