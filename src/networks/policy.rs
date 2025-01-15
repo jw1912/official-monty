@@ -5,7 +5,7 @@ use crate::{
 
 use super::{
     accumulator::Accumulator,
-    layer::{Layer, TransposedLayer},
+    layer::{Layer, TransposedLayer}, threats,
 };
 
 // DO NOT MOVE
@@ -23,7 +23,7 @@ pub const L1: usize = 12288;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct PolicyNetwork {
-    l1: Layer<i8, { 768 * 4 }, L1>,
+    l1: Layer<i8, { threats::TOTAL }, L1>,
     l2: TransposedLayer<i8, { L1 / 2 }, { 1880 * 2 }>,
 }
 
@@ -35,7 +35,7 @@ impl PolicyNetwork {
             *r = i16::from(b);
         }
 
-        pos.map_features(|feat| {
+        threats::map_features(pos, |feat| {
             for (r, &w) in l1.0.iter_mut().zip(self.l1.weights[feat].0.iter()) {
                 *r += i16::from(w);
             }
@@ -114,7 +114,7 @@ const OFFSETS: [usize; 65] = {
 
 #[repr(C)]
 pub struct UnquantisedPolicyNetwork {
-    l1: Layer<f32, { 768 * 4 }, L1>,
+    l1: Layer<f32, { threats::TOTAL }, L1>,
     l2: Layer<f32, { L1 / 2 }, { 1880 * 2 }>,
 }
 
