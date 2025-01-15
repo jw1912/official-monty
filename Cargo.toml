@@ -15,3 +15,6 @@ codegen-units = 1
 goober = { git = 'https://github.com/jw1912/goober.git' }
 rand = "0.8.5"
 rand_distr = "0.4.3"
+
+[workspace]
+members = ["train"]

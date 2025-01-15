@@ -440,7 +440,7 @@ impl Bitboard {
         SINGLES[sq]
     }
 
-    pub fn doubles(sq: usize) -> u64 {
+    pub const fn doubles(sq: usize) -> u64 {
         DOUBLES[sq]
     }
 }
