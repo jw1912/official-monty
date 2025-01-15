@@ -231,6 +231,10 @@ impl<'a> Searcher<'a> {
 
         let mut best_move = Move::NULL;
 
+        if temp.is_some() {
+            self.tree.add_dirichlet_noise(0.03, 0.05);
+        }
+
         // search loop
         while !self.abort.load(Ordering::Relaxed) {
             thread::scope(|s| {
@@ -268,7 +272,8 @@ impl<'a> Searcher<'a> {
 
         let (_, mov, q) = self.get_best_action(self.tree.root_node());
 
-        if let Some(temp) = temp {
+        let temp = temp.unwrap_or(0.0);
+        if temp > 0.0 {
             let selected = self.tree.get_best_child_temp(temp);
             (selected, q)
         } else {

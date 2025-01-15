@@ -400,6 +400,10 @@ impl Tree {
         use rand::prelude::*;
         use rand_distr::Uniform;
 
+        if temp < 0.01 {
+            panic!("Unstable results with such low temperature!")
+        }
+
         let node = &self[self.root_node()];
         let child_ptr = node.actions();
 
@@ -428,5 +432,28 @@ impl Tree {
         }
 
         self[*child_ptr + (node.num_actions() - 1)].parent_move()
+    }
+
+    pub fn add_dirichlet_noise(&self,  alpha: f32, prop: f32) {
+        use rand::prelude::*;
+        use rand_distr::Dirichlet;
+
+        let node = &self[self.root_node()];
+
+        let actions = &mut *node.actions_mut();
+
+        if node.num_actions() <= 1 {
+            return;
+        }
+
+        let mut rng = rand::thread_rng();
+        let dist = Dirichlet::new(&vec![alpha; node.num_actions()]).unwrap();
+        let samples = dist.sample(&mut rng);
+
+        for (action, &noise) in samples.iter().enumerate() {
+            let child = &self[*actions + action];
+            let policy = (1.0 - prop) * child.policy() + prop * noise;
+            child.set_policy(policy);
+        }
     }
 }
