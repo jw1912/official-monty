@@ -1,6 +1,8 @@
 use crate::ataxx::Board;
 
-use super::NETS;
+static VALUE: ValueNetwork = unsafe {
+    std::mem::transmute(*include_bytes!("../../ataxx-value.network"))
+};
 
 const INPUTS: usize = 2916;
 const HIDDEN: usize = 256;
@@ -50,6 +52,6 @@ impl ValueNetwork {
 }
 
 pub fn get(pos: &Board) -> f32 {
-    let cp = NETS.0.eval(pos);
+    let cp = VALUE.eval(pos);
     1.0 / (1.0 + (-cp as f32 / 400.0).exp())
 }

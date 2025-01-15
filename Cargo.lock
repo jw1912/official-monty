@@ -60,39 +60,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "goober"
-version = "0.1.0"
-source = "git+https://github.com/jw1912/goober.git#32b9b52e68ef03d9d706548fb21bb3c4535c4dd2"
-dependencies = [
- "goober-core",
- "goober-derive",
- "goober-layer",
-]
-
-[[package]]
-name = "goober-core"
-version = "0.1.0"
-source = "git+https://github.com/jw1912/goober.git#32b9b52e68ef03d9d706548fb21bb3c4535c4dd2"
-
-[[package]]
-name = "goober-derive"
-version = "0.1.0"
-source = "git+https://github.com/jw1912/goober.git#32b9b52e68ef03d9d706548fb21bb3c4535c4dd2"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "goober-layer"
-version = "0.1.0"
-source = "git+https://github.com/jw1912/goober.git#32b9b52e68ef03d9d706548fb21bb3c4535c4dd2"
-dependencies = [
- "goober-core",
-]
-
-[[package]]
 name = "libc"
 version = "0.2.169"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -108,7 +75,6 @@ checksum = "8355be11b20d696c8f18f6cc018c4e372165b1fa8126cef092399c9951984ffa"
 name = "monty"
 version = "1.0.0"
 dependencies = [
- "goober",
  "rand",
  "rand_distr",
 ]

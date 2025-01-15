@@ -1,19 +1,18 @@
 use crate::ataxx::{Board, Move};
 
-use goober::{activation, layer, FeedForwardNetwork, SparseVector};
-
 use super::NETS;
 
-#[repr(C)]
-#[derive(Clone, Copy, FeedForwardNetwork)]
-pub struct SubNet {
-    ft: layer::SparseConnected<activation::ReLU, 2916, 8>,
-}
+const HIDDEN: usize = 256;
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+pub struct Accumulator([f32; HIDDEN]);
+
+#[repr(C)]
 pub struct PolicyNetwork {
-    pub subnets: [SubNet; 99],
+    l0w: [Accumulator; 98],
+    l0b: Accumulator,
+    l1w: Accumulator,
+    l1b: f32,
 }
 
 impl PolicyNetwork {
