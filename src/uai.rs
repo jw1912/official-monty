@@ -72,8 +72,8 @@ pub fn run() {
             }
             "quit" => std::process::exit(0),
             "params" => params.list_spsa(),
-            "uci" => preamble(),
-            "ucinewgame" => {
+            "uai" => preamble(),
+            "uainewgame" => {
                 prev = None;
                 root_game_ply = 0;
                 tree.clear(threads);
@@ -88,10 +88,10 @@ fn preamble() {
     println!("id author Jamie Whiting, Viren & The Monty Authors");
     println!("option name Hash type spin default 64 min 1 max 8192");
     println!("option name Threads type spin default 1 min 1 max 512");
-    println!("option name UCI_Chess960 type check default false");
+    println!("option name uai_Chess960 type check default false");
     println!("option name MoveOverhead type spin default 40 min 0 max 5000");
     println!("option name report_moves type button");
-    println!("uciok");
+    println!("uaiok");
 }
 
 fn setoption(
@@ -108,7 +108,7 @@ fn setoption(
     }
 
     let (name, val) = if let ["setoption", "name", x, "value", y] = commands {
-        if *x == "UCI_Chess960" {
+        if *x == "uai_Chess960" {
             return;
         }
 

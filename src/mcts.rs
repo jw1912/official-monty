@@ -63,7 +63,7 @@ impl<'a> Searcher<'a> {
         best_move: &mut Move,
         best_move_changes: &mut i32,
         previous_score: &mut f32,
-        uci_output: bool,
+        uai_output: bool,
     ) {
         if self.playout_until_full_internal(search_stats, true, || {
             self.check_limits(
@@ -74,7 +74,7 @@ impl<'a> Searcher<'a> {
                 best_move,
                 best_move_changes,
                 previous_score,
-                uci_output,
+                uai_output,
             )
         }) {
             self.abort.store(true, Ordering::Relaxed);
@@ -142,7 +142,7 @@ impl<'a> Searcher<'a> {
         best_move: &mut Move,
         best_move_changes: &mut i32,
         previous_score: &mut f32,
-        uci_output: bool,
+        uai_output: bool,
     ) -> bool {
         let iters = search_stats.main_iters.load(Ordering::Relaxed);
 
@@ -201,7 +201,7 @@ impl<'a> Searcher<'a> {
                 return true;
             }
 
-            if uci_output {
+            if uai_output {
                 self.search_report(
                     new_depth,
                     search_stats.seldepth.load(Ordering::Relaxed),
@@ -213,7 +213,7 @@ impl<'a> Searcher<'a> {
             }
         }
 
-        if uci_output && iters % 8192 == 0 && timer_last_output.elapsed().as_secs() >= 15 {
+        if uai_output && iters % 8192 == 0 && timer_last_output.elapsed().as_secs() >= 15 {
             self.search_report(
                 search_stats.avg_depth.load(Ordering::Relaxed),
                 search_stats.seldepth.load(Ordering::Relaxed),
@@ -231,7 +231,7 @@ impl<'a> Searcher<'a> {
         &self,
         threads: usize,
         limits: Limits,
-        uci_output: bool,
+        uai_output: bool,
         update_nodes: &mut usize,
     ) -> (Move, f32) {
         let timer = Instant::now();
@@ -277,7 +277,7 @@ impl<'a> Searcher<'a> {
                         &mut best_move,
                         &mut best_move_changes,
                         &mut previous_score,
-                        uci_output,
+                        uai_output,
                     );
                 });
 
@@ -293,7 +293,7 @@ impl<'a> Searcher<'a> {
 
         *update_nodes += search_stats.total_nodes.load(Ordering::Relaxed);
 
-        if uci_output {
+        if uai_output {
             self.search_report(
                 search_stats.avg_depth.load(Ordering::Relaxed).max(1),
                 search_stats.seldepth.load(Ordering::Relaxed),
