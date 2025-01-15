@@ -25,7 +25,7 @@ const ID: &str = "policy001";
 fn main() {
     let data_preparer = preparer::DataPreparer::new("ataxxgen001.binpack", 4096);
 
-    let size = 12288;
+    let size = 256;
 
     let graph = network(size);
 
