@@ -373,7 +373,7 @@ fn go(
                 GameState::Won(_) => unreachable!(),
             };
 
-            println!("info move {} score cp {score}", mov.to_uci(&pos.castling()));
+            //println!("info move {} score cp {score}", mov.to_uci(&pos.castling()));
 
             if score > best {
                 best = score;
@@ -381,8 +381,9 @@ fn go(
             }
         });
 
-        println!("info score cp {best}");
-        println!("bestmove {}", best_move.to_uci(&pos.castling()));
+        let bm = best_move.to_uci(&pos.castling());
+        println!("info score cp {best} pv {bm}");
+        println!("bestmove {bm}");
 
         return;
     }
