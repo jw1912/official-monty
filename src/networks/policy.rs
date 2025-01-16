@@ -1,7 +1,7 @@
 use crate::ataxx::{Bitboard, Board, Move};
 
 static POLICY: PolicyNetwork = unsafe {
-    std::mem::transmute(*include_bytes!("../../checkpoints/policy001-40/quantised.network"))
+    std::mem::transmute(*include_bytes!("../../ataxx-policy.network"))
 };
 
 const PER_TUPLE: usize = 3usize.pow(4);
