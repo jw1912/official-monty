@@ -62,8 +62,8 @@ macro_rules! init {
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Board {
-    bbs: [u64; 2],
-    gaps: u64,
+    pub bbs: [u64; 2],
+    pub gaps: u64,
     stm: bool,
     halfm: u8,
     fullm: u16,

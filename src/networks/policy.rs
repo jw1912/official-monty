@@ -1,10 +1,12 @@
 use crate::ataxx::{Bitboard, Board, Move};
 
 static POLICY: PolicyNetwork = unsafe {
-    std::mem::transmute(*include_bytes!("../../ataxx-policy.network"))
+    std::mem::transmute(*include_bytes!("../../checkpoints/policy001-40/quantised.network"))
 };
 
-const HIDDEN: usize = 256;
+const PER_TUPLE: usize = 3usize.pow(4);
+const NUM_TUPLES: usize = 36;
+const HIDDEN: usize = 128;
 const Q: i16 = 128;
 
 #[repr(C)]
@@ -13,7 +15,7 @@ pub struct Accumulator<T: Copy>([T; HIDDEN]);
 
 #[repr(C)]
 pub struct PolicyNetwork {
-    l0w: [Accumulator<i8>; 98],
+    l0w: [Accumulator<i8>; PER_TUPLE * NUM_TUPLES],
     l0b: Accumulator<i8>,
     l1w: [Accumulator<i8>; 578],
     l1b: [i8; 578],
@@ -44,7 +46,7 @@ pub fn get_feats(pos: &Board) -> Accumulator<i16> {
         *i = i16::from(j);
     }
 
-    map_feats(pos, |feat| {
+    map_policy_inputs(pos, |feat| {
         for (i, &j) in hl.0.iter_mut().zip(POLICY.l0w[feat].0.iter()) {
             *i += i16::from(j);
         }
@@ -55,20 +57,6 @@ pub fn get_feats(pos: &Board) -> Accumulator<i16> {
     }
 
     hl
-}
-
-fn map_feats(pos: &Board, mut f: impl FnMut(usize)) {
-    let mut bb = pos.boys();
-    while bb > 0 {
-        f(bb.trailing_zeros() as usize);
-        bb &= bb - 1;
-    }
-
-    let mut bb = pos.opps();
-    while bb > 0 {
-        f(49 + bb.trailing_zeros() as usize);
-        bb &= bb - 1;
-    }
 }
 
 fn map_move_to_index(mov: Move) -> usize {
@@ -98,3 +86,45 @@ static OFFSETS: [usize; 50] = {
 
     res
 };
+
+fn map_policy_inputs(pos: &Board, mut f: impl FnMut(usize)) {
+    let boys = pos.boys();
+    let opps = pos.opps();
+
+    for i in 0..6 {
+        for j in 0..6 {
+            const POWERS: [usize; 4] = [1, 3, 9, 27];
+            const MASK: u64 = 0b0001_1000_0011;
+
+            let tuple = 6 * i + j;
+            let mut stm = PER_TUPLE * tuple;
+
+            let offset = 7 * i + j;
+            let mut b = (boys >> offset) & MASK;
+            let mut o = (opps >> offset) & MASK;
+
+            while b > 0 {
+                let mut sq = b.trailing_zeros() as usize;
+                if sq > 6 {
+                    sq -= 5;
+                }
+
+                stm += POWERS[sq];
+
+                b &= b - 1;
+            }
+
+            while o > 0 {
+                let mut sq = o.trailing_zeros() as usize;
+                if sq > 6 {
+                    sq -= 5;
+                }
+
+                stm += 2 * POWERS[sq];
+                o &= o - 1;
+            }
+
+            f(stm);
+        }
+    }
+}

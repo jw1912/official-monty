@@ -15,9 +15,9 @@ pub struct DataPreparer {
 }
 
 impl DataPreparer {
-    pub fn new(path: &str, buffer_size_mb: usize) -> Self {
+    pub fn new(path: &str, buffer_size_mb: usize, threads: usize) -> Self {
         Self {
-            loader: DataLoader::new(path, buffer_size_mb),
+            loader: DataLoader::new(path, buffer_size_mb, threads),
         }
     }
 }

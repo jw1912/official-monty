@@ -5,9 +5,10 @@ mod preparer;
 mod trainer;
 
 use bullet::{
-    default::loader::DataLoader, nn::{
+    nn::{
         optimiser::{AdamWOptimiser, AdamWParams, Optimiser}, Activation, ExecutionContext, Graph, NetworkBuilder, Node, Shape
     }, trainer::{
+        default::loader::DataLoader,
         logger,
         save::{Layout, QuantTarget, SavedFormat},
         schedule::{lr, wdl, TrainingSchedule, TrainingSteps},
@@ -22,9 +23,9 @@ const ID: &str = "policy001";
 const DATA: &str = "ataxxgen001.binpack";
 
 fn main() {
-    let data_preparer = preparer::DataPreparer::new(DATA, 4096);
+    let data_preparer = preparer::DataPreparer::new(DATA, 4096, 4);
 
-    let size = 256;
+    let size = 128;
 
     let (graph, node) = network(size);
 
@@ -51,7 +52,7 @@ fn main() {
         },
         wdl_scheduler: wdl::ConstantWDL { value: 0.0 },
         lr_scheduler: lr::StepLR { start: 0.001, gamma: 0.1, step: 18 },
-        save_rate: 40,
+        save_rate: 5,
     };
 
     let settings = LocalSettings {
@@ -66,8 +67,8 @@ fn main() {
     schedule.display();
     settings.display();
 
-    trainer.load_from_checkpoint("checkpoints/policy001-40");
-    eval_random(&mut trainer, node, &data_preparer);
+    //trainer.load_from_checkpoint("checkpoints/policy001-40");
+    //eval_random(&mut trainer, node, &data_preparer);
 
     trainer.train_custom(
         &data_preparer,
@@ -81,7 +82,7 @@ fn main() {
         },
     );
 
-    let data_preparer = preparer::DataPreparer::new(DATA, 4096);
+    let data_preparer = preparer::DataPreparer::new(DATA, 4096, 1);
     for _ in 0..5 {
         eval_random(&mut trainer, node, &data_preparer);
     }
