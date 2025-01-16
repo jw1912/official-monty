@@ -359,7 +359,7 @@ fn go(
     }
 
     if max_nodes == 1 {
-        let mut best = -10000;
+        let mut best = i32::MIN;
         let mut best_move = Move::NULL;
 
         pos.map_legal_moves(|mov| {
