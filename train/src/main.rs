@@ -20,7 +20,7 @@ use bullet::{
 use trainer::Trainer;
 
 const ID: &str = "policy001";
-const DATA: &str = "ataxxgen001.binpack";
+const DATA: &str = "ataxxgen002.binpack";
 
 fn main() {
     let data_preparer = preparer::DataPreparer::new(DATA, 4096, 4);
@@ -48,10 +48,10 @@ fn main() {
             batch_size: 16_384,
             batches_per_superbatch: 6104,
             start_superbatch: 1,
-            end_superbatch: 40,
+            end_superbatch: 20,
         },
         wdl_scheduler: wdl::ConstantWDL { value: 0.0 },
-        lr_scheduler: lr::StepLR { start: 0.001, gamma: 0.1, step: 18 },
+        lr_scheduler: lr::StepLR { start: 0.001, gamma: 0.1, step: 9 },
         save_rate: 5,
     };
 
