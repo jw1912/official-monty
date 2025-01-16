@@ -1,7 +1,5 @@
 use crate::{
-    chess::{ChessState, Move},
-    mcts::{Limits, SearchHelpers, Searcher},
-    MctsParams, PolicyNetwork, Tree, ValueNetwork,
+    chess::{ChessState, Move}, mcts::{Limits, SearchHelpers, Searcher}, GameState, MctsParams, PolicyNetwork, Tree, ValueNetwork
 };
 
 use std::{
@@ -358,6 +356,35 @@ fn go(
                 _ => mode = "none",
             },
         }
+    }
+
+    if max_nodes == 1 {
+        let mut best = -10000;
+        let mut best_move = Move::NULL;
+
+        pos.map_legal_moves(|mov| {
+            let mut new = pos.clone();
+            new.make_move(mov);
+
+            let score = match new.game_state() {
+                GameState::Ongoing => -new.get_value(value, params),
+                GameState::Lost(_) => 10000,
+                GameState::Draw => 0,
+                GameState::Won(_) => unreachable!(),
+            };
+
+            println!("info move {} score cp {score}", mov.to_uci(&pos.castling()));
+
+            if score > best {
+                best = score;
+                best_move = mov;
+            }
+        });
+
+        println!("info score cp {best}");
+        println!("bestmove {}", best_move.to_uci(&pos.castling()));
+
+        return;
     }
 
     // `go wtime <wtime> btime <btime> winc <winc> binc <binc>``
