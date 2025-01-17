@@ -3,7 +3,6 @@ use monty::ataxx::Board;
 pub const INPUT_SIZE: usize = NUM_TUPLES * PER_TUPLE;
 pub const MAX_ACTIVE: usize = NUM_TUPLES;
 
-
 const PER_TUPLE: usize = 3usize.pow(4);
 const NUM_TUPLES: usize = 36;
 

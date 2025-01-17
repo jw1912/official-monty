@@ -1,8 +1,7 @@
 use crate::ataxx::Board;
 
-static VALUE: ValueNetwork = unsafe {
-    std::mem::transmute(*include_bytes!("../../ataxx-value.network"))
-};
+static VALUE: ValueNetwork =
+    unsafe { std::mem::transmute(*include_bytes!("../../ataxx-value.network")) };
 
 const INPUTS: usize = 2916;
 const HIDDEN: usize = 256;

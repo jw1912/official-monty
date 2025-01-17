@@ -6,14 +6,16 @@ mod trainer;
 
 use bullet::{
     nn::{
-        optimiser::{AdamWOptimiser, AdamWParams, Optimiser}, Activation, ExecutionContext, Graph, NetworkBuilder, Node, Shape
-    }, trainer::{
+        optimiser::{AdamWOptimiser, AdamWParams, Optimiser},
+        Activation, ExecutionContext, Graph, NetworkBuilder, Node, Shape,
+    },
+    trainer::{
         default::loader::DataLoader,
         logger,
         save::{Layout, QuantTarget, SavedFormat},
         schedule::{lr, wdl, TrainingSchedule, TrainingSteps},
         settings::LocalSettings,
-        NetworkTrainer, DataPreparer
+        DataPreparer, NetworkTrainer,
     },
 };
 
@@ -51,7 +53,11 @@ fn main() {
             end_superbatch: 20,
         },
         wdl_scheduler: wdl::ConstantWDL { value: 0.0 },
-        lr_scheduler: lr::StepLR { start: 0.001, gamma: 0.1, step: 9 },
+        lr_scheduler: lr::StepLR {
+            start: 0.001,
+            gamma: 0.1,
+            step: 9,
+        },
         save_rate: 5,
     };
 
@@ -92,12 +98,22 @@ fn eval_random(trainer: &mut Trainer, node: Node, data_preparer: &preparer::Data
     data_preparer.loader.map_batches(0, 1, |batch| {
         println!("{}", batch[0].pos.as_fen());
 
-        let indices: Vec<_> = batch[0].moves.iter().take(batch[0].num).map(|x| moves::map_move_to_index(x.0)).collect();
+        let indices: Vec<_> = batch[0]
+            .moves
+            .iter()
+            .take(batch[0].num)
+            .map(|x| moves::map_move_to_index(x.0))
+            .collect();
 
         let prepd = data_preparer.prepare(batch, 1, 1.0);
         trainer.load_batch(&prepd);
         trainer.optimiser.graph_mut().forward();
-        let mut vals = trainer.optimiser.graph().get_node(node).get_dense_vals().unwrap();
+        let mut vals = trainer
+            .optimiser
+            .graph()
+            .get_node(node)
+            .get_dense_vals()
+            .unwrap();
 
         let mut max = 0.0;
         let mut total = 0.0;
@@ -121,16 +137,16 @@ fn eval_random(trainer: &mut Trainer, node: Node, data_preparer: &preparer::Data
 
 fn save(trainer: &Trainer, path: &str) {
     trainer
-    .save_weights_portion(
-        path,
-        &[
-            SavedFormat::new("l0w", QuantTarget::I8(128), Layout::Normal),
-            SavedFormat::new("l0b", QuantTarget::I8(128), Layout::Normal),
-            SavedFormat::new("l1w", QuantTarget::I8(128), Layout::Transposed),
-            SavedFormat::new("l1b", QuantTarget::I8(128), Layout::Normal),
-        ],
-    )
-    .unwrap();
+        .save_weights_portion(
+            path,
+            &[
+                SavedFormat::new("l0w", QuantTarget::I8(128), Layout::Normal),
+                SavedFormat::new("l0b", QuantTarget::I8(128), Layout::Normal),
+                SavedFormat::new("l1w", QuantTarget::I8(128), Layout::Transposed),
+                SavedFormat::new("l1b", QuantTarget::I8(128), Layout::Normal),
+            ],
+        )
+        .unwrap();
 }
 
 fn network(size: usize) -> (Graph, Node) {

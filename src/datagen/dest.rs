@@ -1,7 +1,8 @@
 use std::{
     fs::File,
     io::{BufWriter, Write},
-    sync::atomic::{AtomicBool, Ordering}, time::Instant,
+    sync::atomic::{AtomicBool, Ordering},
+    time::Instant,
 };
 
 use super::format::MontyAtaxxFormat;

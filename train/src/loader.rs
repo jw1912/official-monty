@@ -5,8 +5,8 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use monty::{ataxx::Move, datagen::MontyAtaxxFormat};
 use monty::ataxx::Board;
+use monty::{ataxx::Move, datagen::MontyAtaxxFormat};
 
 use crate::moves::MAX_MOVES;
 
@@ -59,7 +59,9 @@ impl bullet::default::loader::DataLoader<DecompressedData> for DataLoader {
             let mut reader = BufReader::new(File::open(file_path.as_str()).unwrap());
 
             let mut buffer = Vec::new();
-            while let Ok(()) = MontyAtaxxFormat::deserialise_fast_into_buffer(&mut reader, &mut buffer) {
+            while let Ok(()) =
+                MontyAtaxxFormat::deserialise_fast_into_buffer(&mut reader, &mut buffer)
+            {
                 if msg_receiver.try_recv().unwrap_or(false) || sender.send(buffer).is_err() {
                     break 'dataloading;
                 }
@@ -68,7 +70,8 @@ impl bullet::default::loader::DataLoader<DecompressedData> for DataLoader {
             }
         });
 
-        let (game_sender, game_receiver) = mpsc::sync_channel::<Vec<DecompressedData>>(4 * self.threads);
+        let (game_sender, game_receiver) =
+            mpsc::sync_channel::<Vec<DecompressedData>>(4 * self.threads);
         let (game_msg_sender, game_msg_receiver) = mpsc::sync_channel::<bool>(1);
 
         let threads = self.threads;
@@ -111,7 +114,9 @@ impl bullet::default::loader::DataLoader<DecompressedData> for DataLoader {
 
                     shuffle(&mut shuffle_buffer);
 
-                    if buffer_msg_receiver.try_recv().unwrap_or(false) || buffer_sender.send(shuffle_buffer).is_err() {
+                    if buffer_msg_receiver.try_recv().unwrap_or(false)
+                        || buffer_sender.send(shuffle_buffer).is_err()
+                    {
                         game_msg_sender.send(true).unwrap();
                         break 'dataloading;
                     }
@@ -207,7 +212,6 @@ fn parse_into_buffer(game: MontyAtaxxFormat, buffer: &mut Vec<DecompressedData>,
                     policy_data.moves[i] = (mov, visits as u16);
                 }
 
-
                 buffer.push(policy_data);
             }
         }
@@ -244,7 +248,7 @@ enum Transform {
     Vertical,
     Rotational,
     Diagonal,
-    AntiDiagonal
+    AntiDiagonal,
 }
 
 fn transform_bb(bb: u64, trans: Transform) -> u64 {

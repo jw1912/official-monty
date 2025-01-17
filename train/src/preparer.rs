@@ -1,7 +1,4 @@
-use bullet::{
-    default::loader::DataLoader as Blah,
-    nn::Shape,
-};
+use bullet::{default::loader::DataLoader as Blah, nn::Shape};
 
 use crate::{
     inputs::{map_policy_inputs, INPUT_SIZE, MAX_ACTIVE},

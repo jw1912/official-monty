@@ -434,7 +434,7 @@ impl Tree {
         self[*child_ptr + (node.num_actions() - 1)].parent_move()
     }
 
-    pub fn add_dirichlet_noise(&self,  alpha: f32, prop: f32) {
+    pub fn add_dirichlet_noise(&self, alpha: f32, prop: f32) {
         use rand::prelude::*;
         use rand_distr::Dirichlet;
 

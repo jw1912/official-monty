@@ -1,8 +1,7 @@
 use crate::ataxx::{Bitboard, Board, Move};
 
-static POLICY: PolicyNetwork = unsafe {
-    std::mem::transmute(*include_bytes!("../../ataxx-policy.network"))
-};
+static POLICY: PolicyNetwork =
+    unsafe { std::mem::transmute(*include_bytes!("../../ataxx-policy.network")) };
 
 const PER_TUPLE: usize = 3usize.pow(4);
 const NUM_TUPLES: usize = 36;
@@ -41,7 +40,7 @@ pub fn get(mov: Move, feats: &Accumulator<i16>) -> f32 {
 
 pub fn get_feats(pos: &Board) -> Accumulator<i16> {
     let mut hl = Accumulator([0; HIDDEN]);
-    
+
     for (i, &j) in hl.0.iter_mut().zip(POLICY.l0b.0.iter()) {
         *i = i16::from(j);
     }
