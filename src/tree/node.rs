@@ -1,7 +1,7 @@
 use std::{
     ops::Add,
     sync::{
-        atomic::{AtomicI32, AtomicI64, AtomicU16, AtomicU32, AtomicU8, Ordering},
+        atomic::{AtomicI32, AtomicI64, AtomicU16, AtomicU8, Ordering},
         RwLock, RwLockReadGuard, RwLockWriteGuard,
     },
 };
@@ -60,7 +60,7 @@ pub struct Node {
     visits: AtomicI32,
     summed_q: AtomicI64,
     summed_sq_q: AtomicI64,
-    gini_impurity: AtomicU32,
+    gini_impurity: AtomicU8,
 }
 
 impl Node {
@@ -75,7 +75,7 @@ impl Node {
             visits: AtomicI32::new(0),
             summed_q: AtomicI64::new(0),
             summed_sq_q: AtomicI64::new(0),
-            gini_impurity: AtomicU32::new(0),
+            gini_impurity: AtomicU8::new(0),
         }
     }
 
@@ -172,12 +172,12 @@ impl Node {
     }
 
     pub fn gini_impurity(&self) -> f32 {
-        f32::from_bits(self.gini_impurity.load(Ordering::Relaxed))
+        f32::from(self.gini_impurity.load(Ordering::Relaxed)) / 255.0
     }
 
     pub fn set_gini_impurity(&self, gini_impurity: f32) {
         self.gini_impurity
-            .store(f32::to_bits(gini_impurity), Ordering::Relaxed);
+            .store((gini_impurity.clamp(0.0, 1.0) * 255.0) as u8, Ordering::Relaxed);
     }
 
     pub fn clear_actions(&self) {
