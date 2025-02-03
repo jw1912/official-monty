@@ -27,10 +27,10 @@ pub fn perform_one(
             if let Some(entry) = tree.probe_hash(hash) {
                 entry.q()
             } else {
-                get_utility(searcher, ptr, pos)
+                get_utility(searcher, ptr, pos, hash)
             }
         } else {
-            get_utility(searcher, ptr, pos)
+            get_utility(searcher, ptr, pos, hash)
         }
     } else {
         // expand node on the second visit
@@ -80,16 +80,18 @@ pub fn perform_one(
     // **of the parent**, as they are usually only
     // accessed from the parent's POV
     u = 1.0 - u;
-
-    let new_q = node.update(u);
-    tree.push_hash(hash, 1.0 - new_q);
+    node.update(u);
 
     Some(u)
 }
 
-fn get_utility(searcher: &Searcher, ptr: NodePtr, pos: &ChessState) -> f32 {
+fn get_utility(searcher: &Searcher, ptr: NodePtr, pos: &ChessState, hash: u64) -> f32 {
     match searcher.tree[ptr].state() {
-        GameState::Ongoing => pos.get_value_wdl(searcher.value, searcher.params),
+        GameState::Ongoing => {
+            let q = pos.get_value_wdl(searcher.value, searcher.params);
+            searcher.tree.push_hash(hash, q);
+            q
+        },
         GameState::Draw => 0.5,
         GameState::Lost(_) => 0.0,
         GameState::Won(_) => 1.0,
