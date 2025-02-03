@@ -108,18 +108,16 @@ impl Node {
     fn q64(&self) -> f64 {
         let summed_q = self.summed_q.load(Ordering::Relaxed);
         let visits = self.visits.load(Ordering::Relaxed);
-        (summed_q / i64::from(visits)) as f64 / f64::from(QUANT)
-    }
-
-    pub fn q(&self) -> f32 {
-        let summed_q = self.summed_q.load(Ordering::Relaxed);
-        let visits = self.visits.load(Ordering::Relaxed);
 
         if visits == 0 {
             return 0.0;
         }
 
-        (summed_q / i64::from(visits)) as f32 / f32::from(QUANT)
+        (summed_q / i64::from(visits)) as f64 / f64::from(QUANT)
+    }
+
+    pub fn q(&self) -> f32 {
+        self.q64() as f32
     }
 
     pub fn sq_q(&self) -> f64 {

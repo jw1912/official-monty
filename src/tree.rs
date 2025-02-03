@@ -36,7 +36,7 @@ impl Tree {
     pub fn new_mb(mb: usize, threads: usize) -> Self {
         let bytes = mb * 1024 * 1024;
 
-        Self::new(bytes / 56, bytes / 56 / 16, threads)
+        Self::new(bytes / 44, bytes / 44 / 16, threads)
     }
 
     fn new(tree_cap: usize, hash_cap: usize, threads: usize) -> Self {
