@@ -6,9 +6,9 @@ use std::{
     },
 };
 
-const QUANT: i16 = 4096;
+use crate::chess::{GameState, Move};
 
-use crate::{GameState, Move};
+const QUANT: i16 = 4096;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct NodePtr(u32);
