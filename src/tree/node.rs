@@ -1,10 +1,12 @@
 use std::{
     ops::Add,
     sync::{
-        atomic::{AtomicI32, AtomicU16, AtomicU32, AtomicU8, Ordering},
+        atomic::{AtomicI32, AtomicI64, AtomicU16, AtomicU32, AtomicU8, Ordering},
         RwLock, RwLockReadGuard, RwLockWriteGuard,
     },
 };
+
+const QUANT: i16 = 4096;
 
 use crate::{GameState, Move};
 
@@ -56,8 +58,8 @@ pub struct Node {
     mov: AtomicU16,
     policy: AtomicU16,
     visits: AtomicI32,
-    q: AtomicU32,
-    sq_q: AtomicU32,
+    summed_q: AtomicI64,
+    summed_sq_q: AtomicI64,
     gini_impurity: AtomicU32,
 }
 
@@ -71,8 +73,8 @@ impl Node {
             mov: AtomicU16::new(0),
             policy: AtomicU16::new(0),
             visits: AtomicI32::new(0),
-            q: AtomicU32::new(0),
-            sq_q: AtomicU32::new(0),
+            summed_q: AtomicI64::new(0),
+            summed_sq_q: AtomicI64::new(0),
             gini_impurity: AtomicU32::new(0),
         }
     }
@@ -104,15 +106,26 @@ impl Node {
     }
 
     fn q64(&self) -> f64 {
-        f64::from(self.q.load(Ordering::Relaxed)) / f64::from(u32::MAX)
+        let summed_q = self.summed_q.load(Ordering::Relaxed);
+        let visits = self.visits.load(Ordering::Relaxed);
+        (summed_q / i64::from(visits)) as f64 / f64::from(QUANT)
     }
 
     pub fn q(&self) -> f32 {
-        self.q64() as f32
+        let summed_q = self.summed_q.load(Ordering::Relaxed);
+        let visits = self.visits.load(Ordering::Relaxed);
+
+        if visits == 0 {
+            return 0.0;
+        }
+
+        (summed_q / i64::from(visits)) as f32 / f32::from(QUANT)
     }
 
     pub fn sq_q(&self) -> f64 {
-        f64::from(self.sq_q.load(Ordering::Relaxed)) / f64::from(u32::MAX)
+        let summed_sq_q = self.summed_q.load(Ordering::Relaxed);
+        let visits = self.visits.load(Ordering::Relaxed);
+        (summed_sq_q / i64::from(visits)) as f64 / f64::from(QUANT).powi(2)
     }
 
     pub fn var(&self) -> f32 {
@@ -188,8 +201,8 @@ impl Node {
         self.gini_impurity
             .store(other.gini_impurity.load(Relaxed), Relaxed);
         self.visits.store(other.visits.load(Relaxed), Relaxed);
-        self.q.store(other.q.load(Relaxed), Relaxed);
-        self.sq_q.store(other.sq_q.load(Relaxed), Relaxed);
+        self.summed_q.store(other.summed_q.load(Relaxed), Relaxed);
+        self.summed_sq_q.store(other.summed_sq_q.load(Relaxed), Relaxed);
     }
 
     pub fn clear(&self) {
@@ -197,23 +210,17 @@ impl Node {
         self.set_state(GameState::Ongoing);
         self.set_gini_impurity(0.0);
         self.visits.store(0, Ordering::Relaxed);
-        self.q.store(0, Ordering::Relaxed);
-        self.sq_q.store(0, Ordering::Relaxed);
+        self.summed_q.store(0, Ordering::Relaxed);
+        self.summed_sq_q.store(0, Ordering::Relaxed);
         self.threads.store(0, Ordering::Relaxed);
     }
 
-    pub fn update(&self, result: f32) -> f32 {
-        let r = f64::from(result);
-        let v = f64::from(self.visits.fetch_add(1, Ordering::Relaxed));
+    pub fn update(&self, q: f32) -> f32 {
+        let q = (q * f32::from(QUANT)) as i64;
+        let old_v = self.visits.fetch_add(1, Ordering::Relaxed);
+        let old_q = self.summed_q.fetch_add(q, Ordering::Relaxed);
+        self.summed_sq_q.fetch_add(q * q, Ordering::Relaxed);
 
-        let q = (self.q64() * v + r) / (v + 1.0);
-        let sq_q = (self.sq_q() * v + r.powi(2)) / (v + 1.0);
-
-        self.q
-            .store((q * f64::from(u32::MAX)) as u32, Ordering::Relaxed);
-        self.sq_q
-            .store((sq_q * f64::from(u32::MAX)) as u32, Ordering::Relaxed);
-
-        q as f32
+        ((q + old_q) / i64::from(1 + old_v)) as f32 / f32::from(QUANT)
     }
 }
