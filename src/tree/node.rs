@@ -8,7 +8,7 @@ use std::{
 
 use crate::chess::{GameState, Move};
 
-const QUANT: i16 = 4096;
+const QUANT: i32 = 16384 * 4;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct NodePtr(u32);
@@ -108,18 +108,16 @@ impl Node {
     fn q64(&self) -> f64 {
         let summed_q = self.summed_q.load(Ordering::Relaxed);
         let visits = self.visits.load(Ordering::Relaxed);
-        (summed_q / i64::from(visits)) as f64 / f64::from(QUANT)
-    }
-
-    pub fn q(&self) -> f32 {
-        let summed_q = self.summed_q.load(Ordering::Relaxed);
-        let visits = self.visits.load(Ordering::Relaxed);
 
         if visits == 0 {
             return 0.0;
         }
 
-        (summed_q / i64::from(visits)) as f32 / f32::from(QUANT)
+        (summed_q / i64::from(visits)) as f64 / f64::from(QUANT)
+    }
+
+    pub fn q(&self) -> f32 {
+        self.q64() as f32
     }
 
     pub fn sq_q(&self) -> f64 {
@@ -216,11 +214,11 @@ impl Node {
     }
 
     pub fn update(&self, q: f32) -> f32 {
-        let q = (q * f32::from(QUANT)) as i64;
+        let q = (f64::from(q) * f64::from(QUANT)) as i64;
         let old_v = self.visits.fetch_add(1, Ordering::Relaxed);
         let old_q = self.summed_q.fetch_add(q, Ordering::Relaxed);
         self.summed_sq_q.fetch_add(q * q, Ordering::Relaxed);
 
-        ((q + old_q) / i64::from(1 + old_v)) as f32 / f32::from(QUANT)
+        (((q + old_q) / i64::from(1 + old_v)) as f64 / f64::from(QUANT)) as f32
     }
 }
