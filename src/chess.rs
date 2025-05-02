@@ -4,10 +4,9 @@ pub mod consts;
 mod frc;
 mod moves;
 
-use crate::{
-    mcts::MctsParams,
-    networks::{Accumulator, PolicyNetwork, ValueNetwork, POLICY_L1},
-};
+use consts::Piece;
+
+use crate::mcts::MctsParams;
 
 pub use self::{attacks::Attacks, board::Board, frc::Castling, moves::Move};
 
@@ -72,7 +71,7 @@ impl Default for ChessState {
 
 impl ChessState {
     pub const STARTPOS: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    pub const BENCH_DEPTH: usize = 6;
+    pub const BENCH_DEPTH: usize = 4;
 
     pub fn board(&self) -> Board {
         self.board
@@ -122,70 +121,35 @@ impl ChessState {
         self.board.stm()
     }
 
-    pub fn map_moves_with_policies<F: FnMut(Move, f32)>(&self, policy: &PolicyNetwork, mut f: F) {
-        let hl = policy.hl(&self.board);
-
-        self.map_legal_moves(|mov| {
-            let policy = policy.get(&self.board, &mov, &hl);
-            f(mov, policy);
-        });
+    pub fn map_moves_with_policies<F: FnMut(Move, f32)>(&self, mut f: F) {
+        self.map_legal_moves(|mov| f(mov, 1.0));
     }
 
-    pub fn get_policy_hl(&self, policy: &PolicyNetwork) -> Accumulator<i16, { POLICY_L1 / 2 }> {
-        policy.hl(&self.board)
+    pub fn get_value(&self, _params: &MctsParams) -> i32 {
+        let cnt = |c, pc| (self.board.piece(c) & self.board.piece(pc)).count_ones() as i32;
+
+        let stm = self.stm();
+        let ntm = 1 - stm;
+
+        100 * (cnt(stm, Piece::PAWN) - cnt(ntm, Piece::PAWN))
+            + 300 * (cnt(stm, Piece::KNIGHT) - cnt(ntm, Piece::KNIGHT))
+            + 300 * (cnt(stm, Piece::BISHOP) - cnt(ntm, Piece::BISHOP))
+            + 500 * (cnt(stm, Piece::ROOK) - cnt(ntm, Piece::ROOK))
+            + 900 * (cnt(stm, Piece::QUEEN) - cnt(ntm, Piece::QUEEN))
     }
 
-    pub fn get_policy(
-        &self,
-        mov: Move,
-        hl: &Accumulator<i16, { POLICY_L1 / 2 }>,
-        policy: &PolicyNetwork,
-    ) -> f32 {
-        policy.get(&self.board, &mov, hl)
-    }
-
-    #[cfg(not(feature = "datagen"))]
-    fn piece_count(&self, piece: usize) -> i32 {
-        self.board.piece(piece).count_ones() as i32
-    }
-
-    pub fn get_value(&self, value: &ValueNetwork, _params: &MctsParams) -> i32 {
-        const K: f32 = 400.0;
-        let (win, draw, _) = value.eval(&self.board);
-
-        let score = win + draw / 2.0;
-        let cp = (-K * (1.0 / score.clamp(0.0, 1.0) - 1.0).ln()) as i32;
-
-        #[cfg(not(feature = "datagen"))]
-        {
-            use consts::Piece;
-
-            let mut mat = self.piece_count(Piece::KNIGHT) * _params.knight_value()
-                + self.piece_count(Piece::BISHOP) * _params.bishop_value()
-                + self.piece_count(Piece::ROOK) * _params.rook_value()
-                + self.piece_count(Piece::QUEEN) * _params.queen_value();
-
-            mat = _params.material_offset() + mat / _params.material_div1();
-
-            cp * mat / _params.material_div2()
-        }
-
-        #[cfg(feature = "datagen")]
-        cp
-    }
-
-    pub fn get_value_wdl(&self, value: &ValueNetwork, params: &MctsParams) -> f32 {
-        1.0 / (1.0 + (-(self.get_value(value, params) as f32) / 400.0).exp())
+    pub fn get_value_wdl(&self, params: &MctsParams) -> f32 {
+        1.0 / (1.0 + (-(self.get_value(params) as f32) / 400.0).exp())
     }
 
     pub fn perft(&self, depth: usize) -> u64 {
         perft::<true, true>(&self.board, depth as u8, &self.castling)
     }
 
-    pub fn display(&self, policy: &PolicyNetwork) {
+    pub fn display(&self) {
         let mut moves = Vec::new();
         let mut max = f32::NEG_INFINITY;
-        self.map_moves_with_policies(policy, |mov, policy| {
+        self.map_moves_with_policies(|mov, policy| {
             moves.push((mov, policy));
 
             if policy > max {

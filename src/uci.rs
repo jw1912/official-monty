@@ -1,7 +1,6 @@
 use crate::{
     chess::{ChessState, Move},
     mcts::{Limits, MctsParams, SearchHelpers, Searcher, REPORT_ITERS},
-    networks::{PolicyNetwork, ValueNetwork},
     tree::Tree,
 };
 
@@ -11,7 +10,7 @@ use std::{
     time::Instant,
 };
 
-pub fn run(policy: &PolicyNetwork, value: &ValueNetwork) {
+pub fn run() {
     let mut pos = ChessState::default();
     let mut root_game_ply = 0;
     let mut params = MctsParams::default();
@@ -63,8 +62,6 @@ pub fn run(policy: &PolicyNetwork, value: &ValueNetwork) {
                     root_game_ply,
                     &params,
                     report_moves,
-                    policy,
-                    value,
                     threads,
                     move_overhead,
                     &mut stored_message,
@@ -77,19 +74,19 @@ pub fn run(policy: &PolicyNetwork, value: &ValueNetwork) {
                     ChessState::BENCH_DEPTH
                 };
 
-                bench(depth, policy, value, &params);
+                bench(depth, &params);
             }
             "perft" => run_perft(&commands, &pos),
             "quit" => std::process::exit(0),
             "eval" => {
-                println!("cp: {}", pos.get_value(value, &params));
-                println!("wdl: {:.2}%", 100.0 * pos.get_value_wdl(value, &params));
+                println!("cp: {}", pos.get_value(&params));
+                println!("wdl: {:.2}%", 100.0 * pos.get_value_wdl( &params));
             }
             "policy" => {
                 let mut max = f32::NEG_INFINITY;
                 let mut moves = Vec::new();
 
-                pos.map_moves_with_policies(policy, |mov, policy| {
+                pos.map_moves_with_policies(|mov, policy| {
                     let s = pos.conv_mov_to_str(mov);
 
                     if policy > max {
@@ -113,7 +110,7 @@ pub fn run(policy: &PolicyNetwork, value: &ValueNetwork) {
                     println!("{s} -> {:.2}%", p / total * 100.0);
                 }
             }
-            "d" => pos.display(policy),
+            "d" => pos.display(),
             "params" => params.list_spsa(),
             "uci" => preamble(),
             "ucinewgame" => {
@@ -125,7 +122,7 @@ pub fn run(policy: &PolicyNetwork, value: &ValueNetwork) {
     }
 }
 
-pub fn bench(depth: usize, policy: &PolicyNetwork, value: &ValueNetwork, params: &MctsParams) {
+pub fn bench(depth: usize, params: &MctsParams) {
     let mut total_nodes = 0;
     let mut time = 0.0;
 
@@ -199,7 +196,7 @@ pub fn bench(depth: usize, policy: &PolicyNetwork, value: &ValueNetwork, params:
         let abort = AtomicBool::new(false);
         let pos = ChessState::from_fen(fen);
         tree.set_root_position(&pos);
-        let searcher = Searcher::new(&tree, params, policy, value, &abort);
+        let searcher = Searcher::new(&tree, params, &abort);
         let timer = Instant::now();
         searcher.search(1, limits, false, &mut total_nodes);
         time += timer.elapsed().as_secs_f32();
@@ -316,8 +313,6 @@ fn go(
     root_game_ply: u32,
     params: &MctsParams,
     report_moves: bool,
-    policy: &PolicyNetwork,
-    value: &ValueNetwork,
     threads: usize,
     move_overhead: usize,
     stored_message: &mut Option<String>,
@@ -390,7 +385,7 @@ fn go(
 
     std::thread::scope(|s| {
         s.spawn(|| {
-            let searcher = Searcher::new(tree, params, policy, value, &abort);
+            let searcher = Searcher::new(tree, params, &abort);
             let (mov, _) = searcher.search(threads, limits, true, &mut 0);
             println!("bestmove {}", pos.conv_mov_to_str(mov));
 

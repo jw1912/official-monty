@@ -7,7 +7,6 @@ pub use params::MctsParams;
 
 use crate::{
     chess::{GameState, Move},
-    networks::{PolicyNetwork, ValueNetwork},
     tree::{NodePtr, Tree},
 };
 
@@ -39,8 +38,6 @@ pub struct SearchStats {
 pub struct Searcher<'a> {
     tree: &'a Tree,
     params: &'a MctsParams,
-    policy: &'a PolicyNetwork,
-    value: &'a ValueNetwork,
     abort: &'a AtomicBool,
 }
 
@@ -48,15 +45,11 @@ impl<'a> Searcher<'a> {
     pub fn new(
         tree: &'a Tree,
         params: &'a MctsParams,
-        policy: &'a PolicyNetwork,
-        value: &'a ValueNetwork,
         abort: &'a AtomicBool,
     ) -> Self {
         Self {
             tree,
             params,
-            policy,
-            value,
             abort,
         }
     }
@@ -262,30 +255,10 @@ impl<'a> Searcher<'a> {
             assert_eq!(node, ptr);
 
             self.tree[ptr].clear();
-            self.tree.expand_node(ptr, pos, self.params, self.policy, 1);
+            self.tree.expand_node(ptr, pos);
 
-            let root_eval = pos.get_value_wdl(self.value, self.params);
+            let root_eval = pos.get_value_wdl(self.params);
             self.tree[ptr].update(1.0 - root_eval);
-        }
-        // relabel preexisting root policies with root PST value
-        else if self.tree[node].has_children() {
-            self.tree
-                .relabel_policy(node, pos, self.params, self.policy, 1);
-
-            let first_child_ptr = self.tree[node].actions();
-
-            for action in 0..self.tree[node].num_actions() {
-                let ptr = first_child_ptr + action;
-
-                if ptr.is_null() || !self.tree[ptr].has_children() {
-                    continue;
-                }
-
-                let mut child = pos.clone();
-                child.make_move(self.tree[ptr].parent_move());
-                self.tree
-                    .relabel_policy(ptr, &child, self.params, self.policy, 2);
-            }
         }
 
         let search_stats = SearchStats::default();
@@ -318,6 +291,7 @@ impl<'a> Searcher<'a> {
             });
 
             if !self.abort.load(Ordering::Relaxed) {
+                println!("info string flipping tree");
                 self.tree.flip(true, threads);
             }
         }

@@ -35,7 +35,7 @@ pub fn perform_one(
     } else {
         // expand node on the second visit
         if node.is_not_expanded() {
-            tree.expand_node(ptr, pos, searcher.params, searcher.policy, *depth)?;
+            tree.expand_node(ptr, pos)?;
         }
 
         // this node has now been accessed so we need to move its
@@ -88,7 +88,7 @@ pub fn perform_one(
 
 fn get_utility(searcher: &Searcher, ptr: NodePtr, pos: &ChessState) -> f32 {
     match searcher.tree[ptr].state() {
-        GameState::Ongoing => pos.get_value_wdl(searcher.value, searcher.params),
+        GameState::Ongoing => pos.get_value_wdl(searcher.params),
         GameState::Draw => 0.5,
         GameState::Lost(_) => 0.0,
         GameState::Won(_) => 1.0,
