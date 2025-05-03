@@ -5,11 +5,11 @@ use montyformat::{MontyFormat, MontyValueFormat};
 use rng::Rand;
 use thread::DatagenThread;
 
-use monty::{
+use crate::{
     chess::ChessState,
     mcts::MctsParams,
     networks::{self, PolicyNetwork, ValueNetwork},
-    read_into_struct_unchecked, uci, MappedWeights,
+    util::{read_into_struct_unchecked, MappedWeights},uci,
 };
 
 use std::{
@@ -23,7 +23,7 @@ use std::{
     time::Duration,
 };
 
-fn main() {
+pub fn run() {
     let mut args = std::env::args();
     args.next();
 

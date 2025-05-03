@@ -1,9 +1,3 @@
-pub mod chess;
-pub mod mcts;
-pub mod networks;
-pub mod tree;
-pub mod uci;
-
 use memmap2::Mmap;
 
 pub struct MappedWeights<'a, T> {

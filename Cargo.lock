@@ -95,14 +95,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "datagen"
-version = "0.1.0"
-dependencies = [
- "monty",
- "montyformat",
-]
-
-[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -190,6 +182,7 @@ version = "1.0.0"
 dependencies = [
  "chrono",
  "memmap2",
+ "montyformat",
  "once_cell",
  "sha2",
  "zstd",
@@ -197,8 +190,9 @@ dependencies = [
 
 [[package]]
 name = "montyformat"
-version = "0.3.0"
-source = "git+https://github.com/official-monty/montyformat.git?tag=v0.3.0#0789de7fb025d799b4cb57b840714fd4d3c6fcfb"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8456b021dfc471484f59d58babbe38656d1714bc96a75cfb12a5bfd976b8a829"
 
 [[package]]
 name = "num-traits"

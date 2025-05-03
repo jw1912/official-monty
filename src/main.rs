@@ -1,11 +1,30 @@
-fn main() {
-    #[cfg(feature = "embed")]
-    net::run();
+pub mod chess;
+pub mod mcts;
+pub mod networks;
+pub mod tree;
+pub mod uci;
+pub mod util;
 
-    #[cfg(not(feature = "embed"))]
-    nonet::run();
+pub use util::boxed_and_zeroed;
+
+#[cfg(feature = "datagen")]
+pub mod datagen;
+
+fn main() {
+    #[cfg(not(feature = "datagen"))]
+    {
+        #[cfg(feature = "embed")]
+        net::run();
+    
+        #[cfg(not(feature = "embed"))]
+        nonet::run();
+    }
+
+    #[cfg(feature = "datagen")]
+    datagen::run();
 }
 
+#[cfg(not(feature = "datagen"))]
 #[cfg(feature = "embed")]
 mod net {
     use memmap2::Mmap;
@@ -239,11 +258,12 @@ mod net {
     }
 }
 
+#[cfg(not(feature = "datagen"))]
 #[cfg(not(feature = "embed"))]
 mod nonet {
-    use monty::{
-        chess::ChessState, mcts::MctsParams, networks, read_into_struct_unchecked, uci,
-        MappedWeights,
+    use crate::{
+        chess::ChessState, mcts::MctsParams, networks, uci,
+        util::{read_into_struct_unchecked, MappedWeights},
     };
 
     pub fn run() {

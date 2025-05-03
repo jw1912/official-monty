@@ -1,6 +1,6 @@
-use crate::{Destination, Rand};
+use super::{Destination, Rand};
 
-use monty::{
+use crate::{
     chess::{ChessState, GameState},
     mcts::{Limits, MctsParams, Searcher},
     networks::{PolicyNetwork, ValueNetwork},

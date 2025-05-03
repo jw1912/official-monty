@@ -1,7 +1,4 @@
-use crate::{
-    boxed_and_zeroed,
-    chess::{Attacks, Board, Move},
-};
+use crate::chess::{Attacks, Board, Move};
 
 use super::{
     accumulator::Accumulator,
@@ -111,21 +108,3 @@ const OFFSETS: [usize; 65] = {
 
     offsets
 };
-
-#[repr(C)]
-pub struct UnquantisedPolicyNetwork {
-    l1: Layer<f32, { 768 * 4 }, L1>,
-    l2: Layer<f32, { L1 / 2 }, { 1880 * 2 }>,
-}
-
-impl UnquantisedPolicyNetwork {
-    pub fn quantise(&self) -> Box<PolicyNetwork> {
-        let mut quantised: Box<PolicyNetwork> = unsafe { boxed_and_zeroed() };
-
-        self.l1.quantise_into_i8(&mut quantised.l1, QA, 0.99);
-        self.l2
-            .quantise_transpose_into_i8(&mut quantised.l2, QB, 0.99);
-
-        quantised
-    }
-}
