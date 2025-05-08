@@ -21,7 +21,7 @@ pub const L1: usize = 12288;
 #[derive(Clone, Copy)]
 pub struct PolicyNetwork {
     l1: Layer<i8, 768, L1>,
-    l2: TransposedLayer<i8, { L1 / 2 }, { 1880 * 2 }>,
+    l2: TransposedLayer<i8, { L1 / 2 }, 1880>,
 }
 
 impl PolicyNetwork {
@@ -67,13 +67,10 @@ impl PolicyNetwork {
     }
 }
 
-const PROMOS: usize = 4 * 22;
-
 fn map_move_to_index(pos: &Board, mov: Move) -> usize {
     let hm = if pos.king_index() % 8 > 3 { 7 } else { 0 };
-    let good_see = (OFFSETS[64] + PROMOS) * usize::from(pos.see(&mov, -108));
 
-    let idx = if mov.is_promo() {
+    if mov.is_promo() {
         let ffile = (mov.src() ^ hm) % 8;
         let tfile = (mov.to() ^ hm) % 8;
         let promo_id = 2 * ffile + tfile;
@@ -87,9 +84,7 @@ fn map_move_to_index(pos: &Board, mov: Move) -> usize {
         let below = Attacks::ALL_DESTINATIONS[from] & ((1 << dest) - 1);
 
         OFFSETS[from] + below.count_ones() as usize
-    };
-
-    good_see + idx
+    }
 }
 
 const OFFSETS: [usize; 65] = {
