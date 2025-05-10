@@ -1,7 +1,8 @@
-use crate::{
-    boxed_and_zeroed,
-    chess::{Attacks, Board, Move},
-};
+mod consts;
+mod inputs;
+mod threats;
+
+use crate::chess::{consts::Side, Attacks, Board, Move};
 
 use super::{
     accumulator::Accumulator,
@@ -19,11 +20,24 @@ const QB: i16 = 128;
 const FACTOR: i16 = 32;
 
 pub const L1: usize = 12288;
+pub const INPUT_SIZE: usize = inputs::TOTAL;
+
+pub fn map_policy_inputs<F: FnMut(usize)>(pos: &Board, f: F) {
+    let mut bbs = pos.bbs();
+
+    if pos.stm() == Side::BLACK {
+        for bb in &mut bbs {
+            *bb = bb.swap_bytes();
+        }
+    }
+
+    inputs::map_features(bbs, f);
+}
 
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct PolicyNetwork {
-    l1: Layer<i8, { 768 * 4 }, L1>,
+    l1: Layer<i8, INPUT_SIZE, L1>,
     l2: TransposedLayer<i8, { L1 / 2 }, { 1880 * 2 }>,
 }
 
@@ -35,7 +49,7 @@ impl PolicyNetwork {
             *r = i16::from(b);
         }
 
-        pos.map_features(|feat| {
+        map_policy_inputs(pos, |feat| {
             for (r, &w) in l1.0.iter_mut().zip(self.l1.weights[feat].0.iter()) {
                 *r += i16::from(w);
             }
@@ -111,21 +125,3 @@ const OFFSETS: [usize; 65] = {
 
     offsets
 };
-
-#[repr(C)]
-pub struct UnquantisedPolicyNetwork {
-    l1: Layer<f32, { 768 * 4 }, L1>,
-    l2: Layer<f32, { L1 / 2 }, { 1880 * 2 }>,
-}
-
-impl UnquantisedPolicyNetwork {
-    pub fn quantise(&self) -> Box<PolicyNetwork> {
-        let mut quantised: Box<PolicyNetwork> = unsafe { boxed_and_zeroed() };
-
-        self.l1.quantise_into_i8(&mut quantised.l1, QA, 0.99);
-        self.l2
-            .quantise_transpose_into_i8(&mut quantised.l2, QB, 0.99);
-
-        quantised
-    }
-}
