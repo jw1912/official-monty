@@ -26,6 +26,7 @@ pub fn map_policy_inputs<F: FnMut(usize)>(pos: &Board, f: F) {
     let mut bbs = pos.bbs();
 
     if pos.stm() == Side::BLACK {
+        bbs.swap(0, 1);
         for bb in &mut bbs {
             *bb = bb.swap_bytes();
         }
