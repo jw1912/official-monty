@@ -46,26 +46,56 @@ impl PolicyNetwork {
     pub fn get(&self, pos: &Board, castling: &Castling, mov: Move, hl: &Accumulator<i16, L1>) -> f32 {
         let weights = &self.l2.weights[0];
 
-        let mut thl = *hl;
+        //let mut thl = *hl;
 
         let diff = get_diff(pos, castling, mov);
 
-        for &feat in &diff[..2] {
-            if feat != -1 {
-                thl.sub_i8(&self.l1.weights[768 + feat as usize]);
-            }
-        }
+        let sub1 = diff[0];
+        let sub2 = diff[1];
+        let add1 = diff[2];
+        let add2 = diff[3];
 
-        for &feat in &diff[2..] {
-            if feat != -1 {
-                thl.add_i8(&self.l1.weights[768 + feat as usize]);
-            }
-        }
+        assert_ne!(sub1, -1);
+        assert_ne!(add1, -1);
+
+        let sub1w = &self.l1.weights[768 + sub1 as usize];
+        let add1w = &self.l1.weights[768 + add1 as usize];
 
         let mut res = 0;
 
-        for (&w, &v) in weights.0.iter().zip(thl.0.iter()) {
-            res += i32::from(w) * i32::from(v.clamp(0, QA)).pow(2);
+        match (sub2, add2) {
+            (-1, -1) => {
+                for i in 0..L1 {
+                    let v = hl.0[i] - i16::from(sub1w.0[i]) + i16::from(add1w.0[i]);
+                    res += i32::from(weights.0[i]) * i32::from(v.clamp(0, QA).pow(2));
+                }
+            }
+            (-1, x) => {
+                let add2w = &self.l1.weights[768 + x as usize];
+
+                for i in 0..L1 {
+                    let v = hl.0[i] - i16::from(sub1w.0[i]) + i16::from(add1w.0[i]) + i16::from(add2w.0[i]);
+                    res += i32::from(weights.0[i]) * i32::from(v.clamp(0, QA).pow(2));
+                }
+            }
+            (x, -1) => {
+                let sub2w = &self.l1.weights[768 + x as usize];
+
+                for i in 0..L1 {
+                    let v = hl.0[i] - i16::from(sub1w.0[i]) + i16::from(add1w.0[i]) - i16::from(sub2w.0[i]);
+                    res += i32::from(weights.0[i]) * i32::from(v.clamp(0, QA).pow(2));
+                }
+            }
+            (x, y) => {
+                let sub2w = &self.l1.weights[768 + x as usize];
+                let add2w = &self.l1.weights[768 + y as usize];
+
+                for i in 0..L1 {
+                    let v = hl.0[i] - i16::from(sub1w.0[i]) + i16::from(add1w.0[i]) - i16::from(sub2w.0[i]) + i16::from(add2w.0[i]);
+                    res += i32::from(weights.0[i]) * i32::from(v.clamp(0, QA).pow(2));
+                }
+
+            }
         }
 
         (res as f32 / f32::from(QA.pow(2)) + f32::from(self.l2.biases.0[0])) / f32::from(QB)
