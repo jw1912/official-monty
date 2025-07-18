@@ -1,9 +1,9 @@
-use crate::chess::{consts::{Flag, Piece, Side}, Board, Castling, Move};
-
-use super::{
-    accumulator::Accumulator,
-    layer::{Layer, TransposedLayer},
+use crate::chess::{
+    consts::{Flag, Piece, Side},
+    Attacks, Board, Castling, Move,
 };
+
+use super::{accumulator::Accumulator, layer::Layer};
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals, dead_code)]
@@ -20,7 +20,7 @@ pub const L1: usize = 2560;
 #[derive(Clone, Copy)]
 pub struct PolicyNetwork {
     l1: Layer<i8, { 768 * 2 }, L1>,
-    l2: TransposedLayer<i8, L1, 1>,
+    l2: [Accumulator<i8, L1>; 1880 * 2],
 }
 
 impl PolicyNetwork {
@@ -43,10 +43,14 @@ impl PolicyNetwork {
         l1
     }
 
-    pub fn get(&self, pos: &Board, castling: &Castling, mov: Move, hl: &Accumulator<i16, L1>) -> f32 {
-        let weights = &self.l2.weights[0];
-
-        //let mut thl = *hl;
+    pub fn get(
+        &self,
+        pos: &Board,
+        castling: &Castling,
+        mov: Move,
+        hl: &Accumulator<i16, L1>,
+    ) -> f32 {
+        let weights = &self.l2[map_move_to_index(pos, mov)];
 
         let diff = get_diff(pos, castling, mov);
 
@@ -74,7 +78,9 @@ impl PolicyNetwork {
                 let add2w = &self.l1.weights[768 + x as usize];
 
                 for i in 0..L1 {
-                    let v = hl.0[i] - i16::from(sub1w.0[i]) + i16::from(add1w.0[i]) + i16::from(add2w.0[i]);
+                    let v = hl.0[i] - i16::from(sub1w.0[i])
+                        + i16::from(add1w.0[i])
+                        + i16::from(add2w.0[i]);
                     res += i32::from(weights.0[i]) * i32::from(v.clamp(0, QA).pow(2));
                 }
             }
@@ -82,7 +88,8 @@ impl PolicyNetwork {
                 let sub2w = &self.l1.weights[768 + x as usize];
 
                 for i in 0..L1 {
-                    let v = hl.0[i] - i16::from(sub1w.0[i]) + i16::from(add1w.0[i]) - i16::from(sub2w.0[i]);
+                    let v = hl.0[i] - i16::from(sub1w.0[i]) + i16::from(add1w.0[i])
+                        - i16::from(sub2w.0[i]);
                     res += i32::from(weights.0[i]) * i32::from(v.clamp(0, QA).pow(2));
                 }
             }
@@ -91,14 +98,15 @@ impl PolicyNetwork {
                 let add2w = &self.l1.weights[768 + y as usize];
 
                 for i in 0..L1 {
-                    let v = hl.0[i] - i16::from(sub1w.0[i]) + i16::from(add1w.0[i]) - i16::from(sub2w.0[i]) + i16::from(add2w.0[i]);
+                    let v = hl.0[i] - i16::from(sub1w.0[i]) + i16::from(add1w.0[i])
+                        - i16::from(sub2w.0[i])
+                        + i16::from(add2w.0[i]);
                     res += i32::from(weights.0[i]) * i32::from(v.clamp(0, QA).pow(2));
                 }
-
             }
         }
 
-        (res as f32 / f32::from(QA.pow(2)) + f32::from(self.l2.biases.0[0])) / f32::from(QB)
+        (res / i32::from(QA)) as f32 / (f32::from(QA) * f32::from(QB))
     }
 }
 
@@ -139,7 +147,11 @@ fn get_diff(pos: &Board, castling: &Castling, mov: Move) -> [i32; 4] {
         let ks = usize::from(mov.flag() == Flag::KS);
         let sf = 56 * pos.stm();
 
-        diff[1] = idx(0, Piece::ROOK, sf + castling.rook_file(pos.stm(), ks) as usize);
+        diff[1] = idx(
+            0,
+            Piece::ROOK,
+            sf + castling.rook_file(pos.stm(), ks) as usize,
+        );
         diff[3] = idx(0, Piece::ROOK, sf + [3, 5][ks]);
     }
 
@@ -150,3 +162,45 @@ fn get_diff(pos: &Board, castling: &Castling, mov: Move) -> [i32; 4] {
 
     diff
 }
+
+const PROMOS: usize = 4 * 22;
+
+fn map_move_to_index(pos: &Board, mov: Move) -> usize {
+    let hm = if pos.king_index() % 8 > 3 { 7 } else { 0 };
+    let good_see = (OFFSETS[64] + PROMOS) * usize::from(pos.see(&mov, -108));
+
+    let idx = if mov.is_promo() {
+        let ffile = (mov.src() ^ hm) % 8;
+        let tfile = (mov.to() ^ hm) % 8;
+        let promo_id = 2 * ffile + tfile;
+
+        OFFSETS[64] + 22 * (mov.promo_pc() - 3) + usize::from(promo_id)
+    } else {
+        let flip = if pos.stm() == 1 { 56 } else { 0 };
+        let from = usize::from(mov.src() ^ flip ^ hm);
+        let dest = usize::from(mov.to() ^ flip ^ hm);
+
+        let below = Attacks::ALL_DESTINATIONS[from] & ((1 << dest) - 1);
+
+        OFFSETS[from] + below.count_ones() as usize
+    };
+
+    good_see + idx
+}
+
+const OFFSETS: [usize; 65] = {
+    let mut offsets = [0; 65];
+
+    let mut curr = 0;
+    let mut sq = 0;
+
+    while sq < 64 {
+        offsets[sq] = curr;
+        curr += Attacks::ALL_DESTINATIONS[sq].count_ones() as usize;
+        sq += 1;
+    }
+
+    offsets[64] = curr;
+
+    offsets
+};
