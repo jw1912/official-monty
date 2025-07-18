@@ -126,22 +126,22 @@ impl ChessState {
         let hl = policy.hl(&self.board);
 
         self.map_legal_moves(|mov| {
-            let policy = policy.get(&self.board, &mov, &hl);
+            let policy = policy.get(&self.board, &self.castling, mov, &hl);
             f(mov, policy);
         });
     }
 
-    pub fn get_policy_hl(&self, policy: &PolicyNetwork) -> Accumulator<i16, { POLICY_L1 / 2 }> {
+    pub fn get_policy_hl(&self, policy: &PolicyNetwork) -> Accumulator<i16, POLICY_L1> {
         policy.hl(&self.board)
     }
 
     pub fn get_policy(
         &self,
         mov: Move,
-        hl: &Accumulator<i16, { POLICY_L1 / 2 }>,
+        hl: &Accumulator<i16, POLICY_L1>,
         policy: &PolicyNetwork,
     ) -> f32 {
-        policy.get(&self.board, &mov, hl)
+        policy.get(&self.board, &self.castling, mov, hl)
     }
 
     #[cfg(not(feature = "datagen"))]

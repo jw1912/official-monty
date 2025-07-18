@@ -1,7 +1,4 @@
-use crate::{
-    boxed_and_zeroed,
-    chess::{Attacks, Board, Move},
-};
+use crate::chess::{consts::{Flag, Piece, Side}, Board, Castling, Move};
 
 use super::{
     accumulator::Accumulator,
@@ -10,25 +7,24 @@ use super::{
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals, dead_code)]
-pub const PolicyFileDefaultName: &str = "nn-658ca1d47406.network";
+pub const PolicyFileDefaultName: &str = "nn-cfb555edbe8a.network";
 #[allow(non_upper_case_globals, dead_code)]
 pub const CompressedPolicyName: &str = "nn-4b70c6924179.network";
 
 const QA: i16 = 128;
 const QB: i16 = 128;
-const FACTOR: i16 = 32;
 
-pub const L1: usize = 12288;
+pub const L1: usize = 2560;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct PolicyNetwork {
-    l1: Layer<i8, { 768 * 4 }, L1>,
-    l2: TransposedLayer<i8, { L1 / 2 }, { 1880 * 2 }>,
+    l1: Layer<i8, { 768 * 2 }, L1>,
+    l2: TransposedLayer<i8, L1, 1>,
 }
 
 impl PolicyNetwork {
-    pub fn hl(&self, pos: &Board) -> Accumulator<i16, { L1 / 2 }> {
+    pub fn hl(&self, pos: &Board) -> Accumulator<i16, L1> {
         let mut l1 = Accumulator([0; L1]);
 
         for (r, &b) in l1.0.iter_mut().zip(self.l1.biases.0.iter()) {
@@ -44,91 +40,83 @@ impl PolicyNetwork {
 
         l1.add_multi_i8(&feats[..count], &self.l1.weights);
 
-        let mut res = Accumulator([0; L1 / 2]);
-
-        for (elem, (&i, &j)) in res
-            .0
-            .iter_mut()
-            .zip(l1.0.iter().take(L1 / 2).zip(l1.0.iter().skip(L1 / 2)))
-        {
-            let i = i32::from(i).clamp(0, i32::from(QA));
-            let j = i32::from(j).clamp(0, i32::from(QA));
-            *elem = ((i * j) / i32::from(QA / FACTOR)) as i16;
-        }
-
-        res
+        l1
     }
 
-    pub fn get(&self, pos: &Board, mov: &Move, hl: &Accumulator<i16, { L1 / 2 }>) -> f32 {
-        let idx = map_move_to_index(pos, *mov);
-        let weights = &self.l2.weights[idx];
+    pub fn get(&self, pos: &Board, castling: &Castling, mov: Move, hl: &Accumulator<i16, L1>) -> f32 {
+        let weights = &self.l2.weights[0];
+
+        let mut thl = *hl;
+
+        let diff = get_diff(pos, castling, mov);
+
+        for &feat in &diff[..2] {
+            if feat != -1 {
+                thl.sub_i8(&self.l1.weights[768 + feat as usize]);
+            }
+        }
+
+        for &feat in &diff[2..] {
+            if feat != -1 {
+                thl.add_i8(&self.l1.weights[768 + feat as usize]);
+            }
+        }
 
         let mut res = 0;
 
-        for (&w, &v) in weights.0.iter().zip(hl.0.iter()) {
-            res += i32::from(w) * i32::from(v);
+        for (&w, &v) in weights.0.iter().zip(thl.0.iter()) {
+            res += i32::from(w) * i32::from(v.clamp(0, QA)).pow(2);
         }
 
-        (res as f32 / f32::from(QA * FACTOR) + f32::from(self.l2.biases.0[idx])) / f32::from(QB)
+        (res as f32 / f32::from(QA.pow(2)) + f32::from(self.l2.biases.0[0])) / f32::from(QB)
     }
 }
 
-const PROMOS: usize = 4 * 22;
-
-fn map_move_to_index(pos: &Board, mov: Move) -> usize {
-    let hm = if pos.king_index() % 8 > 3 { 7 } else { 0 };
-    let good_see = (OFFSETS[64] + PROMOS) * usize::from(pos.see(&mov, -108));
-
-    let idx = if mov.is_promo() {
-        let ffile = (mov.src() ^ hm) % 8;
-        let tfile = (mov.to() ^ hm) % 8;
-        let promo_id = 2 * ffile + tfile;
-
-        OFFSETS[64] + 22 * (mov.promo_pc() - 3) + usize::from(promo_id)
-    } else {
-        let flip = if pos.stm() == 1 { 56 } else { 0 };
-        let from = usize::from(mov.src() ^ flip ^ hm);
-        let dest = usize::from(mov.to() ^ flip ^ hm);
-
-        let below = Attacks::ALL_DESTINATIONS[from] & ((1 << dest) - 1);
-
-        OFFSETS[from] + below.count_ones() as usize
+fn get_diff(pos: &Board, castling: &Castling, mov: Move) -> [i32; 4] {
+    let flip = |sq| {
+        if pos.stm() == Side::BLACK {
+            sq ^ 56
+        } else {
+            sq
+        }
     };
+    let idx = |stm, pc, sq| ([0, 384][stm] + 64 * (pc - 2) + flip(sq)) as i32;
 
-    good_see + idx
-}
+    let mut diff = [-1; 4];
 
-const OFFSETS: [usize; 65] = {
-    let mut offsets = [0; 65];
+    let src = mov.src() as usize;
+    let dst = mov.to() as usize;
 
-    let mut curr = 0;
-    let mut sq = 0;
+    let moved = pos.get_pc(1 << src);
+    diff[0] = idx(0, moved, src);
 
-    while sq < 64 {
-        offsets[sq] = curr;
-        curr += Attacks::ALL_DESTINATIONS[sq].count_ones() as usize;
-        sq += 1;
+    if mov.is_en_passant() {
+        diff[1] = idx(1, Piece::PAWN, dst ^ 8);
+    } else if mov.is_capture() {
+        diff[1] = idx(1, pos.get_pc(1 << dst), dst);
     }
 
-    offsets[64] = curr;
-
-    offsets
-};
-
-#[repr(C)]
-pub struct UnquantisedPolicyNetwork {
-    l1: Layer<f32, { 768 * 4 }, L1>,
-    l2: Layer<f32, { L1 / 2 }, { 1880 * 2 }>,
-}
-
-impl UnquantisedPolicyNetwork {
-    pub fn quantise(&self) -> Box<PolicyNetwork> {
-        let mut quantised: Box<PolicyNetwork> = unsafe { boxed_and_zeroed() };
-
-        self.l1.quantise_into_i8(&mut quantised.l1, QA, 0.99);
-        self.l2
-            .quantise_transpose_into_i8(&mut quantised.l2, QB, 0.99);
-
-        quantised
+    if mov.is_promo() {
+        let promo = usize::from((mov.flag() & 3) + 3);
+        diff[2] = idx(0, promo, dst);
+    } else {
+        diff[2] = idx(0, moved, dst);
     }
+
+    if mov.flag() == Flag::KS || mov.flag() == Flag::QS {
+        assert_eq!(diff[1], -1);
+
+        let ks = usize::from(mov.flag() == Flag::KS);
+        let sf = 56 * pos.stm();
+
+        diff[1] = idx(0, Piece::ROOK, sf + castling.rook_file(pos.stm(), ks) as usize);
+        diff[3] = idx(0, Piece::ROOK, sf + [3, 5][ks]);
+    }
+
+    for i in diff {
+        assert!(i < 768);
+        assert!(i >= -1);
+    }
+
+    diff
 }

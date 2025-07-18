@@ -55,9 +55,7 @@ impl<const N: usize> Accumulator<i16, N> {
             }
         }
     }
-}
 
-impl<const N: usize> Accumulator<i16, N> {
     pub fn add_multi_i8(&mut self, adds: &[usize], weights: &[Accumulator<i8, N>]) {
         const REGS: usize = 8;
         const PER: usize = REGS * 16;
@@ -82,6 +80,18 @@ impl<const N: usize> Accumulator<i16, N> {
             for (j, reg) in regs.iter().enumerate() {
                 self.0[offset + j] = *reg;
             }
+        }
+    }
+
+    pub fn add_i8(&mut self, rhs: &Accumulator<i8, N>) {
+        for (i, &j) in self.0.iter_mut().zip(rhs.0.iter()) {
+            *i += i16::from(j);
+        }
+    }
+
+    pub fn sub_i8(&mut self, rhs: &Accumulator<i8, N>) {
+        for (i, &j) in self.0.iter_mut().zip(rhs.0.iter()) {
+            *i -= i16::from(j);
         }
     }
 }
