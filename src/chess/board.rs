@@ -170,29 +170,6 @@ impl Board {
         }
     }
 
-    pub fn map_features<F: FnMut(usize)>(&self, mut f: F) {
-        let vert = if self.stm() == Side::BLACK { 56 } else { 0 };
-        let hori = if self.king_index() % 8 > 3 { 7 } else { 0 };
-        let flip = vert ^ hori;
-
-        for piece in Piece::PAWN..=Piece::KING {
-            let pc = 64 * (piece - 2);
-
-            let mut our_bb = self.piece(piece) & self.piece(self.stm());
-            let mut opp_bb = self.piece(piece) & self.piece(self.stm() ^ 1);
-
-            while our_bb > 0 {
-                pop_lsb!(sq, our_bb);
-                f(pc + usize::from(sq ^ flip));
-            }
-
-            while opp_bb > 0 {
-                pop_lsb!(sq, opp_bb);
-                f(384 + pc + usize::from(sq ^ flip));
-            }
-        }
-    }
-
     #[must_use]
     pub fn attackers_to_square(&self, sq: usize, side: usize, occ: u64) -> u64 {
         ((Attacks::knight(sq) & self.bb[Piece::KNIGHT])

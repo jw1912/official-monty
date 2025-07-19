@@ -123,25 +123,25 @@ impl ChessState {
     }
 
     pub fn map_moves_with_policies<F: FnMut(Move, f32)>(&self, policy: &PolicyNetwork, mut f: F) {
-        let hl = policy.hl(&self.board);
+        let (hl, threats, defences) = policy.hl(&self.board);
 
         self.map_legal_moves(|mov| {
-            let policy = policy.get(&self.board, &self.castling, mov, &hl);
+            let policy = policy.get(&self.board, &self.castling, mov, &hl, threats, defences);
             f(mov, policy);
         });
     }
 
-    pub fn get_policy_hl(&self, policy: &PolicyNetwork) -> Accumulator<i16, POLICY_L1> {
+    pub fn get_policy_hl(&self, policy: &PolicyNetwork) -> (Accumulator<i16, POLICY_L1>, u64, u64) {
         policy.hl(&self.board)
     }
 
     pub fn get_policy(
         &self,
         mov: Move,
-        hl: &Accumulator<i16, POLICY_L1>,
+        (hl, threats, defences): &(Accumulator<i16, POLICY_L1>, u64, u64),
         policy: &PolicyNetwork,
     ) -> f32 {
-        policy.get(&self.board, &self.castling, mov, hl)
+        policy.get(&self.board, &self.castling, mov, hl, *threats, *defences)
     }
 
     #[cfg(not(feature = "datagen"))]
