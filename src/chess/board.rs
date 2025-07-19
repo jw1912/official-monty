@@ -171,7 +171,9 @@ impl Board {
     }
 
     pub fn map_features<F: FnMut(usize)>(&self, mut f: F) {
-        let flip = self.stm() == Side::BLACK;
+        let vert = if self.stm() == Side::BLACK { 56 } else { 0 };
+        let hori = if self.king_index() % 8 > 3 { 7 } else { 0 };
+        let flip = vert ^ hori;
 
         for piece in Piece::PAWN..=Piece::KING {
             let pc = 64 * (piece - 2);
@@ -179,19 +181,14 @@ impl Board {
             let mut our_bb = self.piece(piece) & self.piece(self.stm());
             let mut opp_bb = self.piece(piece) & self.piece(self.stm() ^ 1);
 
-            if flip {
-                our_bb = our_bb.swap_bytes();
-                opp_bb = opp_bb.swap_bytes();
-            }
-
             while our_bb > 0 {
                 pop_lsb!(sq, our_bb);
-                f(pc + usize::from(sq));
+                f(pc + usize::from(sq ^ flip));
             }
 
             while opp_bb > 0 {
                 pop_lsb!(sq, opp_bb);
-                f(384 + pc + usize::from(sq));
+                f(384 + pc + usize::from(sq ^ flip));
             }
         }
     }

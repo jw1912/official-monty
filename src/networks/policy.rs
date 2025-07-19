@@ -111,14 +111,10 @@ impl PolicyNetwork {
 }
 
 fn get_diff(pos: &Board, castling: &Castling, mov: Move) -> [i32; 4] {
-    let flip = |sq| {
-        if pos.stm() == Side::BLACK {
-            sq ^ 56
-        } else {
-            sq
-        }
-    };
-    let idx = |stm, pc, sq| ([0, 384][stm] + 64 * (pc - 2) + flip(sq)) as i32;
+    let vert = if pos.stm() == Side::BLACK { 56 } else { 0 };
+    let hori = if pos.king_index() % 8 > 3 { 7 } else { 0 };
+    let flip = vert ^ hori;
+    let idx = |stm, pc, sq| ([0, 384][stm] + 64 * (pc - 2) + (sq ^ flip)) as i32;
 
     let mut diff = [-1; 4];
 
@@ -168,14 +164,17 @@ const PROMOS: usize = 4 * 22;
 fn map_move_to_index(pos: &Board, mov: Move) -> usize {
     let good_see = (OFFSETS[64] + PROMOS) * usize::from(pos.see(&mov, -108));
 
+    let vert = if pos.stm() == Side::BLACK { 56 } else { 0 };
+    let hori = if pos.king_index() % 8 > 3 { 7 } else { 0 };
+    let flip = vert ^ hori;
+
     let idx = if mov.is_promo() {
-        let ffile = mov.src() % 8;
-        let tfile = mov.to() % 8;
+        let ffile = (mov.src() ^ flip) % 8;
+        let tfile = (mov.to() ^ flip) % 8;
         let promo_id = 2 * ffile + tfile;
 
         OFFSETS[64] + 22 * (mov.promo_pc() - 3) + usize::from(promo_id)
     } else {
-        let flip = if pos.stm() == 1 { 56 } else { 0 };
         let from = usize::from(mov.src() ^ flip);
         let dest = usize::from(mov.to() ^ flip);
 
