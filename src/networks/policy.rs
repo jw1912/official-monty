@@ -67,7 +67,7 @@ impl PolicyNetwork {
         let add1 = diff[2];
         let add2 = diff[3];
 
-        let sub1w = &self.l1.weights[MOVE_OFFSET + sub1 as usize];
+        let sub1w = &self.l1.weights[2 * MOVE_OFFSET + sub1 as usize];
         let add1w = &self.l1.weights[MOVE_OFFSET + add1 as usize];
 
         let mut res = 0;
@@ -90,7 +90,7 @@ impl PolicyNetwork {
                 }
             }
             (x, -1) => {
-                let sub2w = &self.l1.weights[MOVE_OFFSET + x as usize];
+                let sub2w = &self.l1.weights[2 * MOVE_OFFSET + x as usize];
 
                 for i in 0..L1 {
                     let v = hl.0[i] - i16::from(sub1w.0[i]) + i16::from(add1w.0[i])
@@ -99,7 +99,7 @@ impl PolicyNetwork {
                 }
             }
             (x, y) => {
-                let sub2w = &self.l1.weights[MOVE_OFFSET + x as usize];
+                let sub2w = &self.l1.weights[2 * MOVE_OFFSET + x as usize];
                 let add2w = &self.l1.weights[MOVE_OFFSET + y as usize];
 
                 for i in 0..L1 {
