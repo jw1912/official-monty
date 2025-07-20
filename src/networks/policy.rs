@@ -7,7 +7,7 @@ use super::{accumulator::Accumulator, layer::Layer};
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals, dead_code)]
-pub const PolicyFileDefaultName: &str = "nn-cfb555edbe8a.network";
+pub const PolicyFileDefaultName: &str = "var3-sb200.network";
 #[allow(non_upper_case_globals, dead_code)]
 pub const CompressedPolicyName: &str = "nn-4b70c6924179.network";
 
@@ -21,7 +21,7 @@ const MOVE_OFFSET: usize = 768 * 4;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct PolicyNetwork {
-    l1: Layer<i8, { 768 * 8 }, L1>,
+    l1: Layer<i8, { 768 * 12 }, L1>,
     l2: [Accumulator<i8, L1>; 1880 * 2],
 }
 
@@ -75,7 +75,7 @@ impl PolicyNetwork {
         match (sub2, add2) {
             (-1, -1) => {
                 for i in 0..L1 {
-                    let v = hl.0[i] - i16::from(sub1w.0[i]) + i16::from(add1w.0[i]);
+                    let v = hl.0[i] + i16::from(sub1w.0[i]) + i16::from(add1w.0[i]);
                     res += i32::from(weights.0[i]) * i32::from(v.clamp(0, QA).pow(2));
                 }
             }
@@ -83,7 +83,7 @@ impl PolicyNetwork {
                 let add2w = &self.l1.weights[MOVE_OFFSET + x as usize];
 
                 for i in 0..L1 {
-                    let v = hl.0[i] - i16::from(sub1w.0[i])
+                    let v = hl.0[i] + i16::from(sub1w.0[i])
                         + i16::from(add1w.0[i])
                         + i16::from(add2w.0[i]);
                     res += i32::from(weights.0[i]) * i32::from(v.clamp(0, QA).pow(2));
@@ -93,8 +93,8 @@ impl PolicyNetwork {
                 let sub2w = &self.l1.weights[2 * MOVE_OFFSET + x as usize];
 
                 for i in 0..L1 {
-                    let v = hl.0[i] - i16::from(sub1w.0[i]) + i16::from(add1w.0[i])
-                        - i16::from(sub2w.0[i]);
+                    let v = hl.0[i] + i16::from(sub1w.0[i]) + i16::from(add1w.0[i])
+                        + i16::from(sub2w.0[i]);
                     res += i32::from(weights.0[i]) * i32::from(v.clamp(0, QA).pow(2));
                 }
             }
@@ -103,8 +103,8 @@ impl PolicyNetwork {
                 let add2w = &self.l1.weights[MOVE_OFFSET + y as usize];
 
                 for i in 0..L1 {
-                    let v = hl.0[i] - i16::from(sub1w.0[i]) + i16::from(add1w.0[i])
-                        - i16::from(sub2w.0[i])
+                    let v = hl.0[i] + i16::from(sub1w.0[i]) + i16::from(add1w.0[i])
+                        + i16::from(sub2w.0[i])
                         + i16::from(add2w.0[i]);
                     res += i32::from(weights.0[i]) * i32::from(v.clamp(0, QA).pow(2));
                 }
