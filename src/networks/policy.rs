@@ -77,8 +77,7 @@ impl PolicyNetwork {
         let mut src_hits = [16; 64];
 
         let mut dst_cache = [MaybeUninit::uninit(); 128];
-        let mut dst_count = 0;
-        let mut dst_hits = [128; 128];
+        let mut dst_hits = [false; 128];
 
         pos.map_legal_moves(castling, |mov| {
             let src_idx = usize::from(mov.src() ^ flip);
@@ -90,14 +89,13 @@ impl PolicyNetwork {
                 src_count += 1;
             }
 
-            if dst_hits[dst_idx] == 128 {
-                dst_cache[dst_count].write(unsafe { backend::l2(&self.dst2w[dst_idx], &l1[1]) });
-                dst_hits[dst_idx] = dst_count;
-                dst_count += 1;
+            if !dst_hits[dst_idx] {
+                dst_cache[dst_idx].write(unsafe { backend::l2(&self.dst2w[dst_idx], &l1[1]) });
+                dst_hits[dst_idx] = true;
             }
 
             let src_vec = unsafe { src_cache[src_hits[src_idx]].assume_init_ref() };
-            let dst_vec = unsafe { dst_cache[dst_hits[dst_idx]].assume_init_ref() };
+            let dst_vec = unsafe { dst_cache[dst_idx].assume_init_ref() };
 
             let mut res = 0;
 
