@@ -1,10 +1,13 @@
+mod accumulator;
+mod activation;
+pub mod layer;
+mod threats;
+
 use crate::chess::Board;
 
-use super::{
-    activation::SCReLU,
-    layer::{Layer, TransposedLayer},
-    threats, Accumulator,
-};
+use activation::SCReLU;
+use layer::{Layer, TransposedLayer};
+use accumulator::Accumulator;
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals, dead_code)]

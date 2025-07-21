@@ -1,17 +1,17 @@
 use std::io::Write;
 
 use monty::{
-    networks::{PolicyNetwork, UnquantisedPolicyNetwork},
+    networks::policy::{PolicyNetwork, UnqPolicyNetwork},
     read_into_struct_unchecked, MappedWeights,
 };
 
 fn main() {
-    let unquantised: MappedWeights<UnquantisedPolicyNetwork> =
-        unsafe { read_into_struct_unchecked("policy001-600.network") };
+    let unquantised: MappedWeights<UnqPolicyNetwork> =
+        unsafe { read_into_struct_unchecked("sb30-attn.network") };
 
     let quantised = unquantised.data.quantise();
 
-    let mut file = std::fs::File::create("quantised.network").unwrap();
+    let mut file = std::fs::File::create("attnq.network").unwrap();
 
     unsafe {
         let ptr: *const PolicyNetwork = quantised.as_ref();

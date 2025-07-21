@@ -287,10 +287,13 @@ fn position(commands: Vec<&str>, pos: &mut ChessState) {
     let mut move_list = Vec::new();
     let mut moves = false;
 
+    const KIWIPETE: &str = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+
     for cmd in commands {
         match cmd {
             "position" | "fen" => {}
             "startpos" => fen = ChessState::STARTPOS.to_string(),
+            "kiwipete" => fen = KIWIPETE.to_string(),
             "moves" => moves = true,
             _ => {
                 if moves {

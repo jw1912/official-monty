@@ -6,7 +6,7 @@ mod moves;
 
 use crate::{
     mcts::MctsParams,
-    networks::{Accumulator, PolicyNetwork, ValueNetwork, POLICY_L1},
+    networks::{PolicyNetwork, ValueNetwork},
 };
 
 pub use self::{attacks::Attacks, board::Board, frc::Castling, moves::Move};
@@ -122,26 +122,8 @@ impl ChessState {
         self.board.stm()
     }
 
-    pub fn map_moves_with_policies<F: FnMut(Move, f32)>(&self, policy: &PolicyNetwork, mut f: F) {
-        let hl = policy.hl(&self.board);
-
-        self.map_legal_moves(|mov| {
-            let policy = policy.get(&self.board, &mov, &hl);
-            f(mov, policy);
-        });
-    }
-
-    pub fn get_policy_hl(&self, policy: &PolicyNetwork) -> Accumulator<i16, { POLICY_L1 / 2 }> {
-        policy.hl(&self.board)
-    }
-
-    pub fn get_policy(
-        &self,
-        mov: Move,
-        hl: &Accumulator<i16, { POLICY_L1 / 2 }>,
-        policy: &PolicyNetwork,
-    ) -> f32 {
-        policy.get(&self.board, &mov, hl)
+    pub fn map_moves_with_policies<F: FnMut(Move, f32)>(&self, policy: &PolicyNetwork, f: F) {
+        policy.map_moves_with_policies(&self.board, &self.castling, f);
     }
 
     #[cfg(not(feature = "datagen"))]

@@ -231,20 +231,15 @@ impl Tree {
         depth: u8,
     ) {
         let actions = self[node_ptr].actions_mut();
-        let num_actions = self[node_ptr].num_actions();
         let actions_ptr = actions.val();
 
-        let hl = pos.get_policy_hl(policy);
         let mut max = f32::NEG_INFINITY;
         let mut policies = Vec::new();
 
-        for action in 0..num_actions {
-            let mov = self[actions_ptr + action].parent_move();
-            let policy = pos.get_policy(mov, &hl, policy);
-
+        pos.map_moves_with_policies(policy, |_, policy| {
             policies.push(policy);
             max = max.max(policy);
-        }
+        });
 
         let pst = SearchHelpers::get_pst(depth.into(), self[node_ptr].q(), params);
 
