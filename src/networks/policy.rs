@@ -72,23 +72,32 @@ impl PolicyNetwork {
         let hm = if pos.king_index() % 8 > 3 { 7 } else { 0 };
         let flip = hm ^ if pos.stm() == Side::BLACK { 56 } else { 0 };
 
-        let mut cache = [MaybeUninit::uninit(); 16];
-        let mut count = 0;
-        let mut hits = [16; 64];
+        let mut src_cache = [MaybeUninit::uninit(); 16];
+        let mut src_count = 0;
+        let mut src_hits = [16; 64];
+
+        let mut dst_cache = [MaybeUninit::uninit(); 128];
+        let mut dst_count = 0;
+        let mut dst_hits = [128; 128];
 
         pos.map_legal_moves(castling, |mov| {
             let src_idx = usize::from(mov.src() ^ flip);
             let dst_idx = usize::from(mov.to() ^ flip) + 64 * usize::from(pos.see(&mov, -108));
 
-            // QA * QA * QB / (1 << SHIFT)
-            if hits[src_idx] == 16 {
-                cache[count].write(unsafe { backend::l2(&self.src2w[src_idx], &l1[0]) });
-                hits[src_idx] = count;
-                count += 1;
+            if src_hits[src_idx] == 16 {
+                src_cache[src_count].write(unsafe { backend::l2(&self.src2w[src_idx], &l1[0]) });
+                src_hits[src_idx] = src_count;
+                src_count += 1;
             }
-            
-            let src_vec = unsafe { cache[hits[src_idx]].assume_init_ref() };
-            let dst_vec = unsafe { backend::l2(&self.dst2w[dst_idx], &l1[1]) };
+
+            if dst_hits[dst_idx] == 128 {
+                dst_cache[dst_count].write(unsafe { backend::l2(&self.dst2w[dst_idx], &l1[1]) });
+                dst_hits[dst_idx] = dst_count;
+                dst_count += 1;
+            }
+
+            let src_vec = unsafe { src_cache[src_hits[src_idx]].assume_init_ref() };
+            let dst_vec = unsafe { dst_cache[dst_hits[dst_idx]].assume_init_ref() };
 
             let mut res = 0;
 
