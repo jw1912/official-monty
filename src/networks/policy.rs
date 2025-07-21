@@ -2,10 +2,9 @@ mod align;
 
 #[cfg(not(target_feature = "avx2"))]
 mod autovec;
-use std::mem::MaybeUninit;
-
 #[cfg(not(target_feature = "avx2"))]
 use autovec as backend;
+
 #[cfg(target_feature = "avx2")]
 mod avx2;
 #[cfg(target_feature = "avx2")]
@@ -14,6 +13,8 @@ use avx2 as backend;
 use align::Align64;
 
 use crate::chess::{consts::Side, Board, Castling, Move};
+
+use std::mem::MaybeUninit;
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals, dead_code)]
