@@ -88,8 +88,12 @@ pub fn perform_one(
     // accessed from the parent's POV
     u = 1.0 - u;
 
+    let visits = node.visits();
     let new_q = node.update(u);
-    tree.push_hash(hash, 1.0 - new_q);
+
+    if visits > 0 {
+        tree.push_hash(hash, 1.0 - new_q);
+    }
 
     Some(u)
 }
