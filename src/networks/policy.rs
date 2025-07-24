@@ -70,7 +70,7 @@ impl PolicyNetwork {
     }
 }
 
-const NUM_MOVES_INDICES: usize = 2 * FROM_TO;
+const NUM_MOVES_INDICES: usize = 7 * 2 * FROM_TO;
 const FROM_TO: usize = OFFSETS[5][64] + PROMOS + 2 + 8;
 const PROMOS: usize = 4 * 22;
 
@@ -82,6 +82,13 @@ pub fn map_move_to_index(pos: &Board, mov: Move) -> usize {
     let dst = usize::from(mov.to() ^ flip);
 
     let good_see = usize::from(pos.see(&mov, -108));
+    let cap = if mov.is_en_passant() {
+        1
+    } else if mov.is_capture() {
+        pos.get_pc(1 << mov.to()) - 1
+    } else {
+        0
+    };
 
     let idx = if mov.is_promo() {
         let ffile = src % 8;
@@ -102,7 +109,7 @@ pub fn map_move_to_index(pos: &Board, mov: Move) -> usize {
         OFFSETS[pc][src] + below.count_ones() as usize
     };
 
-    FROM_TO * good_see + idx
+    FROM_TO * (7 * good_see + cap) + idx
 }
 
 macro_rules! init {
