@@ -16,7 +16,6 @@ pub const CompressedPolicyName: &str = "nn-4b70c6924179.network";
 
 const QA: i16 = 128;
 const QB: i16 = 128;
-const FACTOR: i16 = 32;
 
 pub const L1: usize = 12288;
 
@@ -53,7 +52,7 @@ impl PolicyNetwork {
         {
             let i = i32::from(i).clamp(0, i32::from(QA));
             let j = i32::from(j).clamp(0, i32::from(QA));
-            *elem = ((i * j) / i32::from(QA / FACTOR)) as i16;
+            *elem = (i * j) as i16;
         }
 
         res
@@ -69,7 +68,7 @@ impl PolicyNetwork {
             res += i32::from(w) * i32::from(v);
         }
 
-        (res as f32 / f32::from(QA * FACTOR) + f32::from(self.l2.biases.0[idx])) / f32::from(QB)
+        (res as f32 / f32::from(QA * QA) + f32::from(self.l2.biases.0[idx])) / f32::from(QB)
     }
 }
 
