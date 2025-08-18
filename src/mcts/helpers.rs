@@ -1,8 +1,7 @@
 use std::time::Instant;
 
 use crate::{
-    mcts::{MctsParams, Searcher},
-    tree::Node,
+    chess::GameState, mcts::{MctsParams, Searcher}, tree::Node
 };
 
 pub struct SearchHelpers;
@@ -83,7 +82,12 @@ impl SearchHelpers {
         if node.visits() == 0 {
             fpu
         } else {
-            node.q()
+            match node.state() {
+                GameState::Ongoing => node.q(),
+                GameState::Draw => 0.5,
+                GameState::Lost(_) => 1.0,
+                GameState::Won(_) => 0.0,
+            }
         }
     }
 
