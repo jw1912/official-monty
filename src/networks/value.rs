@@ -1,30 +1,39 @@
+#[cfg(not(target_feature = "avx2"))]
+mod autovec;
+#[cfg(not(target_feature = "avx2"))]
+use autovec as backend;
+#[cfg(target_feature = "avx2")]
+mod avx2;
+#[cfg(target_feature = "avx2")]
+use avx2 as backend;
+
 use crate::chess::Board;
 
-use super::{
-    activation::SCReLU,
-    layer::{Layer, TransposedLayer},
-    threats, Accumulator,
-};
+use super::{activation::SCReLU, layer::Layer, threats, Accumulator};
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals, dead_code)]
-pub const ValueFileDefaultName: &str = "nn-58274aa39e13.network";
+pub const ValueFileDefaultName: &str = "l2-128.network";
 #[allow(non_upper_case_globals, dead_code)]
 pub const CompressedValueName: &str = "nn-fa1a8afd872c.network";
 #[allow(non_upper_case_globals, dead_code)]
 pub const DatagenValueFileName: &str = "nn-5601bb8c241d.network";
 
 const QA: i16 = 128;
-const QB: i16 = 1024;
+const QB: i16 = 128;
 
 const L1: usize = 3072;
+
+#[repr(C, align(64))]
+pub struct Align64<T, const N: usize>([T; N]);
 
 #[repr(C, align(64))]
 pub struct ValueNetwork {
     pst: [Accumulator<f32, 3>; threats::TOTAL],
     l1: Layer<i8, { threats::TOTAL }, L1>,
-    l2: TransposedLayer<i16, { L1 / 2 }, 16>,
-    l3: Layer<f32, 16, 128>,
+    l2w: Align64<i8, { L1 * 64 }>,
+    l2b: [f32; 128],
+    l3: Layer<f32, 128, 128>,
     l4: Layer<f32, 128, 3>,
 }
 
@@ -42,35 +51,33 @@ impl ValueNetwork {
 
         let mut l2 = Accumulator([0; L1]);
 
-        for (r, &b) in l2.0.iter_mut().zip(self.l1.biases.0.iter()) {
-            *r = i16::from(b);
+        for (i, &j) in l2.0.iter_mut().zip(self.l1.biases.0.iter()) {
+            *i = i16::from(j);
         }
 
         l2.add_multi_i8(&feats[..count], &self.l1.weights);
 
-        let mut act = [0; L1 / 2];
+        let mut act = Align64([0; L1 / 2]);
 
         for (a, (&i, &j)) in act
+            .0
             .iter_mut()
             .zip(l2.0.iter().take(L1 / 2).zip(l2.0.iter().skip(L1 / 2)))
         {
             let i = i.clamp(0, QA);
             let j = j.clamp(0, QA);
-            *a = i * j;
+            *a = ((i * j) >> 7) as u8;
         }
 
-        let mut fwd = [0; 16];
+        // QA * QA * QB / (1 << SHIFT)
+        let l3_ = unsafe { backend::l2(self, &act) };
 
-        for (f, row) in fwd.iter_mut().zip(self.l2.weights.iter()) {
-            for (&a, &w) in act.iter().zip(row.0.iter()) {
-                *f += i32::from(a) * i32::from(w);
-            }
-        }
+        let mut l3 = Accumulator([0.0; 128]);
 
-        let mut l3 = Accumulator([0.0; 16]);
+        let k = f32::from(1i16 << 7) / f32::from(QA) / (f32::from(QA) * f32::from(QB));
 
-        for (r, (&f, &b)) in l3.0.iter_mut().zip(fwd.iter().zip(self.l2.biases.0.iter())) {
-            *r = (f as f32 / f32::from(QA * QA) + f32::from(b)) / f32::from(QB);
+        for (r, (&f, &b)) in l3.0.iter_mut().zip(l3_.0.iter().zip(self.l2b.iter())) {
+            *r = f as f32 * k + b;
         }
 
         let l4 = self.l3.forward::<SCReLU>(&l3);
