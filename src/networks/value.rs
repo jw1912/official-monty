@@ -13,7 +13,7 @@ use super::{activation::SCReLU, layer::Layer, threats, Accumulator};
 
 // DO NOT MOVE
 #[allow(non_upper_case_globals, dead_code)]
-pub const ValueFileDefaultName: &str = "l2-128.network";
+pub const ValueFileDefaultName: &str = "nn-861128333cad.network";
 #[allow(non_upper_case_globals, dead_code)]
 pub const CompressedValueName: &str = "nn-fa1a8afd872c.network";
 #[allow(non_upper_case_globals, dead_code)]
