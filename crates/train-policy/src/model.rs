@@ -15,7 +15,7 @@ pub const MAX_ACTIVE_BASE: usize = 32;
 
 use crate::data::{loader::prepare, reader::DecompressedData};
 
-pub fn make(device: CudaDevice, hl: usize) -> (Graph<CudaDevice>, GraphNodeId) {
+pub fn make(device: CudaDevice, hl: usize, num_hls: usize) -> (Graph<CudaDevice>, GraphNodeId, Vec<GraphNodeId>) {
     let builder = GraphBuilder::default();
 
     let inputs = builder.new_sparse_input("inputs", Shape::new(INPUT_SIZE, 1), MAX_ACTIVE_BASE);
@@ -25,8 +25,7 @@ pub fn make(device: CudaDevice, hl: usize) -> (Graph<CudaDevice>, GraphNodeId) {
     let input_linear = builder.new_affine("input_linear.", INPUT_SIZE, hl);
     let output_linear = builder.new_affine("output_linear.", hl, NUM_MOVES_INDICES);
 
-    //let hidden_layers = (0..4).map(|i| builder.new_affine(&format!("hl{i}."), hl, hl));
-    let hidden_layer = builder.new_affine("hidden_layer.", hl, hl);
+    let hidden_layers = (0..num_hls).map(|i| builder.new_affine(&format!("hl{i}."), hl, hl));
 
     let mut hl = input_linear.forward(inputs);
     let mut crelud = hl.crelu();
@@ -35,22 +34,26 @@ pub fn make(device: CudaDevice, hl: usize) -> (Graph<CudaDevice>, GraphNodeId) {
         
     let logits = builder.apply(select_affine::SelectAffine::new(output_linear, crelud, moves));
     let loss = builder.apply(loss::OptimisedSoftmaxCrossEntropy::new(logits, targets));
-    let mut cumulative_loss = ones.matmul(loss);
+    let mut cumulative_loss = ones.matmul(loss).reduce_sum_across_batch();
     let mut final_loss = loss;
+    let mut loss_nodes = vec![cumulative_loss.annotated_node().idx];
 
-    for _ in 0..4 {
+    for hidden_layer in hidden_layers {
         hl = hl + hidden_layer.forward(crelud);
         crelud = hl.crelu();
         let logits = builder.apply(select_affine::SelectAffine::new(output_linear, crelud, moves));
         let loss = builder.apply(loss::OptimisedSoftmaxCrossEntropy::new(logits, targets));
         final_loss = loss;
-        cumulative_loss = cumulative_loss + ones.matmul(loss);
+        let final_scalar_loss = ones.matmul(loss).reduce_sum_across_batch();
+        cumulative_loss = cumulative_loss + final_scalar_loss;
+        loss_nodes.push(final_scalar_loss.annotated_node().idx);
     }
 
-    let _ = cumulative_loss / 5.0;
+    let _ = cumulative_loss / (num_hls + 1) as f32;
 
     let node = GraphNodeId::new(final_loss.annotated_node().idx, GraphNodeIdTy::Ancillary(0));
-    (builder.build(device), node)
+    let loss_nodes = loss_nodes.into_iter().map(|n| GraphNodeId::new(n, GraphNodeIdTy::Values)).collect();
+    (builder.build(device), node, loss_nodes)
 }
 
 pub fn eval(graph: &mut Graph<CudaDevice>, node: GraphNodeId, fen: &str) {

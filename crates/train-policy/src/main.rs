@@ -17,20 +17,20 @@ use bullet_cuda_backend::CudaDevice;
 use data::MontyDataLoader;
 
 fn main() {
-    //let hl = 16384;
-    //let dataloader = MontyDataLoader::new(
-    //    "/home/privateclient/monty_value_training/interleaved.binpack",
-    //    96000,
-    //    4,
-    //    8,
-    //);
+    let hl = 1024;
+    let dataloader = MontyDataLoader::new(
+        "/home/privateclient/monty_value_training/interleaved.binpack",
+        96000,
+        4,
+        8,
+    );
 
-    let hl = 256;
-    let dataloader = MontyDataLoader::new("../bullet/data/policygen6.binpack", 4096, 2, 2);
+    //let hl = 256;
+    //let dataloader = MontyDataLoader::new("../bullet/data/policygen6.binpack", 4096, 2, 2);
 
     let device = CudaDevice::new(0).unwrap();
 
-    let (graph, node) = model::make(device, hl);
+    let (graph, node, loss_nodes) = model::make(device, hl, 4);
 
     let params = AdamWParams {
         decay: 0.01,
@@ -53,7 +53,7 @@ fn main() {
 
     let steps = TrainingSteps {
         batch_size: 16384,
-        batches_per_superbatch: 1024,
+        batches_per_superbatch: 6104,
         start_superbatch: 1,
         end_superbatch,
     };
@@ -71,12 +71,24 @@ fn main() {
         }),
     };
 
+    let total_loss = std::cell::RefCell::new(vec![0.0; loss_nodes.len()]);
+
     trainer
         .train_custom(
             schedule,
             dataloader,
-            |_, _, _, _| {},
+            |trainer, _, _, _| {
+                for (loss, &node) in total_loss.borrow_mut().iter_mut().zip(loss_nodes.iter()) {
+                    *loss += trainer.optimiser.graph.get(node).unwrap().get_scalar().unwrap();
+                }
+            },
             |trainer, superbatch| {
+                let losses = total_loss.borrow().iter().map(|l| l / (steps.batches_per_superbatch * steps.batch_size) as f32).collect::<Vec<_>>();
+                println!("Losses: {losses:?}");
+                for loss in total_loss.borrow_mut().iter_mut()  {
+                    *loss = 0.0;
+                }
+
                 if superbatch % save_rate == 0 || superbatch == steps.end_superbatch {
                     println!("Saving Checkpoint");
                     let dir = format!("checkpoints/policy-{superbatch}");
