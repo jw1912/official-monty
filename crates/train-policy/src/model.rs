@@ -15,7 +15,11 @@ pub const MAX_ACTIVE_BASE: usize = 32;
 
 use crate::data::{loader::prepare, reader::DecompressedData};
 
-pub fn make(device: CudaDevice, hl: usize, num_hls: usize) -> (Graph<CudaDevice>, GraphNodeId, Vec<GraphNodeId>) {
+pub fn make(
+    device: CudaDevice,
+    hl: usize,
+    num_hls: usize,
+) -> (Graph<CudaDevice>, GraphNodeId, Vec<GraphNodeId>) {
     let builder = GraphBuilder::default();
 
     let inputs = builder.new_sparse_input("inputs", Shape::new(INPUT_SIZE, 1), MAX_ACTIVE_BASE);
@@ -31,8 +35,12 @@ pub fn make(device: CudaDevice, hl: usize, num_hls: usize) -> (Graph<CudaDevice>
     let mut crelud = hl.crelu();
 
     let ones = builder.new_constant(Shape::new(1, MAX_MOVES), &[1.0; MAX_MOVES]);
-        
-    let logits = builder.apply(select_affine::SelectAffine::new(output_linear, crelud, moves));
+
+    let logits = builder.apply(select_affine::SelectAffine::new(
+        output_linear,
+        crelud,
+        moves,
+    ));
     let loss = builder.apply(loss::OptimisedSoftmaxCrossEntropy::new(logits, targets));
     let mut cumulative_loss = ones.matmul(loss).reduce_sum_across_batch();
     let mut final_loss = loss;
@@ -41,7 +49,11 @@ pub fn make(device: CudaDevice, hl: usize, num_hls: usize) -> (Graph<CudaDevice>
     for hidden_layer in hidden_layers {
         hl = hl + hidden_layer.forward(crelud);
         crelud = hl.crelu();
-        let logits = builder.apply(select_affine::SelectAffine::new(output_linear, crelud, moves));
+        let logits = builder.apply(select_affine::SelectAffine::new(
+            output_linear,
+            crelud,
+            moves,
+        ));
         let loss = builder.apply(loss::OptimisedSoftmaxCrossEntropy::new(logits, targets));
         final_loss = loss;
         let final_scalar_loss = ones.matmul(loss).reduce_sum_across_batch();
@@ -52,7 +64,10 @@ pub fn make(device: CudaDevice, hl: usize, num_hls: usize) -> (Graph<CudaDevice>
     let _ = cumulative_loss / (num_hls + 1) as f32;
 
     let node = GraphNodeId::new(final_loss.annotated_node().idx, GraphNodeIdTy::Ancillary(0));
-    let loss_nodes = loss_nodes.into_iter().map(|n| GraphNodeId::new(n, GraphNodeIdTy::Values)).collect();
+    let loss_nodes = loss_nodes
+        .into_iter()
+        .map(|n| GraphNodeId::new(n, GraphNodeIdTy::Values))
+        .collect();
     (builder.build(device), node, loss_nodes)
 }
 

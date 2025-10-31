@@ -79,13 +79,23 @@ fn main() {
             dataloader,
             |trainer, _, _, _| {
                 for (loss, &node) in total_loss.borrow_mut().iter_mut().zip(loss_nodes.iter()) {
-                    *loss += trainer.optimiser.graph.get(node).unwrap().get_scalar().unwrap();
+                    *loss += trainer
+                        .optimiser
+                        .graph
+                        .get(node)
+                        .unwrap()
+                        .get_scalar()
+                        .unwrap();
                 }
             },
             |trainer, superbatch| {
-                let losses = total_loss.borrow().iter().map(|l| l / (steps.batches_per_superbatch * steps.batch_size) as f32).collect::<Vec<_>>();
+                let losses = total_loss
+                    .borrow()
+                    .iter()
+                    .map(|l| l / (steps.batches_per_superbatch * steps.batch_size) as f32)
+                    .collect::<Vec<_>>();
                 println!("Losses: {losses:?}");
-                for loss in total_loss.borrow_mut().iter_mut()  {
+                for loss in total_loss.borrow_mut().iter_mut() {
                     *loss = 0.0;
                 }
 
