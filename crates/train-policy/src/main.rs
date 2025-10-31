@@ -17,13 +17,16 @@ use bullet_cuda_backend::CudaDevice;
 use data::MontyDataLoader;
 
 fn main() {
-    let hl = 16384;
-    let dataloader = MontyDataLoader::new(
-        "/home/privateclient/monty_value_training/interleaved.binpack",
-        96000,
-        4,
-        8,
-    );
+    //let hl = 16384;
+    //let dataloader = MontyDataLoader::new(
+    //    "/home/privateclient/monty_value_training/interleaved.binpack",
+    //    96000,
+    //    4,
+    //    8,
+    //);
+
+    let hl = 256;
+    let dataloader = MontyDataLoader::new("../bullet/data/policygen6.binpack", 4096, 2, 2);
 
     let device = CudaDevice::new(0).unwrap();
 
@@ -50,7 +53,7 @@ fn main() {
 
     let steps = TrainingSteps {
         batch_size: 16384,
-        batches_per_superbatch: 6104,
+        batches_per_superbatch: 1024,
         start_superbatch: 1,
         end_superbatch,
     };

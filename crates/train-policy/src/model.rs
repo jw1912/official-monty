@@ -22,18 +22,34 @@ pub fn make(device: CudaDevice, hl: usize) -> (Graph<CudaDevice>, GraphNodeId) {
     let targets = builder.new_dense_input("targets", Shape::new(MAX_MOVES, 1));
     let moves = builder.new_sparse_input("moves", Shape::new(NUM_MOVES_INDICES, 1), MAX_MOVES);
 
-    let l0 = builder.new_affine("l0", INPUT_SIZE, hl);
-    let l1 = builder.new_affine("l1", hl / 2, NUM_MOVES_INDICES);
+    let input_linear = builder.new_affine("input_linear.", INPUT_SIZE, hl);
+    let output_linear = builder.new_affine("output_linear.", hl, NUM_MOVES_INDICES);
 
-    let hl = l0.forward(inputs).crelu().pairwise_mul();
+    //let hidden_layers = (0..4).map(|i| builder.new_affine(&format!("hl{i}."), hl, hl));
+    let hidden_layer = builder.new_affine("hidden_layer.", hl, hl);
 
-    let logits = builder.apply(select_affine::SelectAffine::new(l1, hl, moves));
+    let mut hl = input_linear.forward(inputs);
+    let mut crelud = hl.crelu();
 
     let ones = builder.new_constant(Shape::new(1, MAX_MOVES), &[1.0; MAX_MOVES]);
+        
+    let logits = builder.apply(select_affine::SelectAffine::new(output_linear, crelud, moves));
     let loss = builder.apply(loss::OptimisedSoftmaxCrossEntropy::new(logits, targets));
-    let _ = ones.matmul(loss);
+    let mut cumulative_loss = ones.matmul(loss);
+    let mut final_loss = loss;
 
-    let node = GraphNodeId::new(loss.annotated_node().idx, GraphNodeIdTy::Ancillary(0));
+    for _ in 0..4 {
+        hl = hl + hidden_layer.forward(crelud);
+        crelud = hl.crelu();
+        let logits = builder.apply(select_affine::SelectAffine::new(output_linear, crelud, moves));
+        let loss = builder.apply(loss::OptimisedSoftmaxCrossEntropy::new(logits, targets));
+        final_loss = loss;
+        cumulative_loss = cumulative_loss + ones.matmul(loss);
+    }
+
+    let _ = cumulative_loss / 5.0;
+
+    let node = GraphNodeId::new(final_loss.annotated_node().idx, GraphNodeIdTy::Ancillary(0));
     (builder.build(device), node)
 }
 
