@@ -104,11 +104,6 @@ fn main() {
                     let dir = format!("checkpoints/policy-{superbatch}");
                     let _ = std::fs::create_dir(&dir);
                     trainer.optimiser.write_to_checkpoint(&dir).unwrap();
-                    model::save_quantised(
-                        &trainer.optimiser.graph,
-                        &format!("{dir}/quantised.bin"),
-                    )
-                    .unwrap();
                 }
             },
         )

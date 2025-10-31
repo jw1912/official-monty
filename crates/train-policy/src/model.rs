@@ -110,23 +110,3 @@ pub fn eval(graph: &mut Graph<CudaDevice>, node: GraphNodeId, fen: &str) {
         )
     }
 }
-
-pub fn save_quantised(graph: &Graph<CudaDevice>, path: &str) -> std::io::Result<()> {
-    use std::io::Write;
-
-    let mut file = std::fs::File::create(path).unwrap();
-
-    let mut quant = Vec::new();
-
-    for id in ["l0w", "l0b", "l1w", "l1b"] {
-        let vals = graph.get_weights(id).get_dense_vals().unwrap();
-
-        for x in vals {
-            let q = (x * 128.0).round() as i8;
-            assert_eq!((x * 128.0).round(), f32::from(q));
-            quant.extend_from_slice(&q.to_le_bytes());
-        }
-    }
-
-    file.write_all(&quant)
-}
