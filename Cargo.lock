@@ -5,7 +5,7 @@ version = 4
 [[package]]
 name = "acyclib"
 version = "0.3.0"
-source = "git+https://github.com/jw1912/bullet?rev=0891eca1fa3316db0d009df7146f85eab04407c2#0891eca1fa3316db0d009df7146f85eab04407c2"
+source = "git+https://github.com/jw1912/bullet?rev=e5f65c43050f3c864d7f1e8af944bc5fbdebcbb6#e5f65c43050f3c864d7f1e8af944bc5fbdebcbb6"
 dependencies = [
  "parking_lot",
  "rand",
@@ -63,7 +63,7 @@ dependencies = [
 [[package]]
 name = "bullet_cuda_backend"
 version = "0.1.0"
-source = "git+https://github.com/jw1912/bullet?rev=0891eca1fa3316db0d009df7146f85eab04407c2#0891eca1fa3316db0d009df7146f85eab04407c2"
+source = "git+https://github.com/jw1912/bullet?rev=e5f65c43050f3c864d7f1e8af944bc5fbdebcbb6#e5f65c43050f3c864d7f1e8af944bc5fbdebcbb6"
 dependencies = [
  "acyclib",
  "cudarc",
@@ -73,7 +73,7 @@ dependencies = [
 [[package]]
 name = "bullet_hip_backend"
 version = "0.1.0"
-source = "git+https://github.com/jw1912/bullet?rev=0891eca1fa3316db0d009df7146f85eab04407c2#0891eca1fa3316db0d009df7146f85eab04407c2"
+source = "git+https://github.com/jw1912/bullet?rev=e5f65c43050f3c864d7f1e8af944bc5fbdebcbb6#e5f65c43050f3c864d7f1e8af944bc5fbdebcbb6"
 dependencies = [
  "acyclib",
  "cc",
@@ -82,7 +82,7 @@ dependencies = [
 [[package]]
 name = "bullet_lib"
 version = "1.0.0"
-source = "git+https://github.com/jw1912/bullet?rev=0891eca1fa3316db0d009df7146f85eab04407c2#0891eca1fa3316db0d009df7146f85eab04407c2"
+source = "git+https://github.com/jw1912/bullet?rev=e5f65c43050f3c864d7f1e8af944bc5fbdebcbb6#e5f65c43050f3c864d7f1e8af944bc5fbdebcbb6"
 dependencies = [
  "acyclib",
  "bullet_cuda_backend",

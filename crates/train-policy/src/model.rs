@@ -22,10 +22,15 @@ pub fn make(device: CudaDevice, hl: usize) -> (Graph<CudaDevice>, GraphNodeId) {
     let targets = builder.new_dense_input("targets", Shape::new(MAX_MOVES, 1));
     let moves = builder.new_sparse_input("moves", Shape::new(NUM_MOVES_INDICES, 1), MAX_MOVES);
 
-    let l0 = builder.new_affine("l0", INPUT_SIZE, hl);
-    let l1 = builder.new_affine("l1", hl / 2, NUM_MOVES_INDICES);
+    let mut l0 = builder.new_affine("l0", INPUT_SIZE, hl);
+    let mut l1 = builder.new_affine("l1", hl / 2, NUM_MOVES_INDICES);
 
-    let hl = l0.forward(inputs).crelu().pairwise_mul();
+    l0.weights = l0.weights.faux_quantise(128.0, true);
+    l0.bias = l0.bias.faux_quantise(128.0, true);
+    l1.weights = l1.weights.faux_quantise(128.0, true);
+    l1.bias = l1.bias.faux_quantise(128.0, true);
+
+    let hl = l0.forward(inputs).crelu().pairwise_mul().faux_quantise(128.0, false);
 
     let logits = builder.apply(select_affine::SelectAffine::new(l1, hl, moves));
 

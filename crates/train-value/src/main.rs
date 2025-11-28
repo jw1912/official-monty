@@ -61,10 +61,15 @@ fn main() {
             let num_inputs = input_features.num_inputs();
 
             let pst = builder.new_weights("pst", Shape::new(3, num_inputs), InitSettings::Zeroed);
-            let l0 = builder.new_affine("l0", num_inputs, l1);
-            let l1 = builder.new_affine("l1", l1 / 2, l2);
+            let mut l0 = builder.new_affine("l0", num_inputs, l1);
+            let mut l1 = builder.new_affine("l1", l1 / 2, l2);
             let l2 = builder.new_affine("l2", l2, l3);
             let l3 = builder.new_affine("l3", l3, 3);
+
+            l0.weights = l0.weights.faux_quantise(128.0, true);
+            l0.bias = l0.bias.faux_quantise(128.0, true);
+            l1.weights = l1.weights.faux_quantise(1024.0, true);
+            l1.bias = l1.bias.faux_quantise(1024.0, true);
 
             l0.init_with_effective_input_size(input_features.max_active());
 
