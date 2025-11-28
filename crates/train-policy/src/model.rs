@@ -30,7 +30,7 @@ pub fn make(device: CudaDevice, hl: usize) -> (Graph<CudaDevice>, GraphNodeId) {
     l1.weights = l1.weights.faux_quantise(128.0, true);
     l1.bias = l1.bias.faux_quantise(128.0, true);
 
-    let hl = l0.forward(inputs).crelu().pairwise_mul().faux_quantise(128.0, false);
+    let hl = l0.forward(inputs).crelu().pairwise_mul().faux_quantise(4096.0, false);
 
     let logits = builder.apply(select_affine::SelectAffine::new(l1, hl, moves));
 
